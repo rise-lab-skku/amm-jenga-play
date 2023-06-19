@@ -2,11 +2,34 @@
 Jenga play with Franka Reasearch 3 [SKKU 2023 URP Team2's Project]
 
 ## How to use
+<details><summary>create an instance of Franka Research 3</summary>
+
+```python
+import fr3
+robot=fr3.fr3()
+```
+## modifying module
+in \_\_init\_\_ method, 
+```python
+URDF_read(
+    your_xacro_file,tld=your_root_path,xacro_tld=xacro_root_path
+)
+```
+for gripper changes, in fr3.py
+```python
+self.grippers[0].tool=SE3(x,y,z)
+```
+and in franka_description/robots/common/inerial.yaml, change values
+```yaml
+leftfinger:
+    ineria:
+        xx: I_xx
+        yy: I_yy
+        zz: I_zz
+```
+
+</details>
 <details><summary>transform and rotation</summary>
-Generate an instance like
-'''python
-robot=rtb.models.fr3()
-'''
 
 # Make the joint at 45 degrees
 ```python

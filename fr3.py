@@ -23,13 +23,13 @@ class fr3(Robot):
         self.grippers[0].tool=SE3(0,0,0.1034)
         #seems to be edited if gripper changes
 
-        self.qdlim=np.array([2.1750, 2.1750, 2.1750, 2.1750, 2.6100, 2.6100, 2.6100, 3.0, 3.0])
+        self.qdlim=np.array([2,1,1.5,1.25,3,1.5,3])
         self.qr = np.array([0, -0.3, 0, -2.2, 0, 2.0, np.pi / 4])
         self.qz = np.zeros(7)
 
-        self.addconfiguration("qdlim(what's mean??)",self.qdlim)
-        self.addconfiguration("qr(means ready position)", self.qr)
-        self.addconfiguration("qz(means zero joint angle)", self.qz)
+        self.addconfiguration("qdlim(means velocity limit)",self.qdlim)
+        self.addconfiguration("qr(ready position)", self.qr)
+        self.addconfiguration("qz(zero joint angle)", self.qz)
 
 
 if __name__=="__main__": #this is for debugging, add value desired to see, run only when directly run this file
