@@ -3,6 +3,10 @@ Jenga play with Franka Reasearch 3 [SKKU 2023 URP Team2's Project]
 
 ## How to use
 <details><summary>transform and rotation</summary>
+Generate an instance like
+'''python
+robot=rtb.models.fr3()
+'''
 
 # Make the joint at 45 degrees
 ```python
