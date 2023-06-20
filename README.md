@@ -19,10 +19,10 @@ for gripper changes, in fr3.py
 ```python
 self.grippers[0].tool=SE3(x,y,z)
 ```
-and in franka_description/robots/common/inerial.yaml, change values
+and in franka_description/robots/common/inertial.yaml, change values
 ```yaml
 leftfinger:
-    ineria:
+    inertia:
         xx: I_xx
         yy: I_yy
         zz: I_zz

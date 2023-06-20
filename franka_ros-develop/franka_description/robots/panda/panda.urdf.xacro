@@ -23,7 +23,7 @@
   <xacro:arg name="rpy" default="0 0 0" />
 
   <xacro:franka_robot arm_id="$(arg arm_id)"
-                      joint_limits="${xacro.load_yaml('$(find franka_description)/robots/panda/joint_limits.yaml')}"
+                      joint_limits="${load_yaml('$(find franka_description)/robots/panda/joint_limits.yaml')}"
                       hand="$(arg hand)"
                       tcp_xyz="$(arg tcp_xyz)"
                       tcp_rpy="$(arg tcp_rpy)"

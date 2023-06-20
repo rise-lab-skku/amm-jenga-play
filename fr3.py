@@ -14,10 +14,10 @@ class fr3(Robot):
             xacro_tld="franka_description"
         )
         #added top level directory
-
         super().__init__(
-            links,name=name,manufacturer="Franka Emika",gripper_links=links[9],urdf_string=urdf_string,urdf_filepath=urdf_filepath
+            links,name=name,manufacturer="Franka Emika",gripper_links=links[16],urdf_string=urdf_string,urdf_filepath=urdf_filepath
         )
+        
         #calling Robot class, not sure what it exactly do
 
         self.grippers[0].tool=SE3(0,0,0.1034)
@@ -34,5 +34,6 @@ class fr3(Robot):
 
 if __name__=="__main__": #this is for debugging, add value desired to see, run only when directly run this file
     r=fr3()
+    print(len(r.links))
     for link in r.grippers[0].links:
         print(link)
