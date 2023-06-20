@@ -1,7 +1,7 @@
-# amm-jenga-play
+# Amm-Jenga-Play
 Jenga play with Franka Reasearch 3 [SKKU 2023 URP Team2's Project]
 
-## How to use
+# How to use
 <details><summary>create an instance of Franka Research 3</summary>
 
 ```python
@@ -59,6 +59,36 @@ sm_transform = sm.SE3(transform)
 ```
 </details>
 
+
+
+
+# Error Control
+
+<details><summary>no attribure 'qplot' error(trajectory.qplot)</summary>
+
+```python
+rtb.tools.trajectory.qplot(qt.q, block=False)
+```
+
+``` Error code: module 'roboticstoolbox.tools.trajectory' has no attribute 'qplot' ```
+- there are class name "Tracjectory" in roboticstoolbox.tools.trajectory
+- we can change the the code as follow
+- xplot in qplot module in plot module in RTB
+
+```
+rtb.tools.plot.xplot(qt.q, block=False)
+```
+
+</details>
+
+
+# Summary
+## 1.1 ETS(Elmentary Transform Sequence)
+
+- ETS : Comporomise many E_i : (Translation and rotations)
+- E_i : T translation + T Rotation($\eta$)
+    - $\eta$ : c and joint variable q
+      - q : $\theta$(evolute joint) + d(prismatic)
 <details><summary>15ETS</summary>
 
 ``` python
@@ -93,44 +123,23 @@ ets4 = ets2 * rtb.ETS([E4, E5])
 ```
 </details>
 
-<details><summary>no attribure 'qplot' error(trajectory.qplot)</summary>
-
-```python
-rtb.tools.trajectory.qplot(qt.q, block=False)
-```
-
-``` Error code: module 'roboticstoolbox.tools.trajectory' has no attribute 'qplot' ```
-- there are class name "Tracjectory" in roboticstoolbox.tools.trajectory
-- we can change the the code as follow
-- xplot in qplot module in plot module in RTB
-
-```
-rtb.tools.plot.xplot(qt.q, block=False)
-```
-
-</details>
-
-
-# Summary
-## 1.1 ETS(Elmentary Transform Sequence)
-
-- ETS : Comporomise many E_i : (Translation and rotations)
-- E_i : T translation + T Rotation($\eta$)
-    - $\eta$ : c and joint variable q
-      - q : $\theta$(evolute joint) + d(prismatic)
 ## 1.2 F - Kinematics
 
-Panda have 7 joint(angle) and 8 static value(length)
-to make joint tranfromatino use below
-```python
- q = np.array([0, -0.3, 0, -2.2, 0, 2, 0.79])
- fk = np.eye(4)
-for et in panda:
-    if et.isjoint:
-        fk = fk @ et.A(q[et.jindex])
-    else:
-        fk = fk @ et.A()
-print(sm.SE3(fk))
-```
+- Panda have 7 joint(angle) and 8 static value(length)
+- to make joint tranfromatino use below
+    <details><summary>code</summary>
 
-![Alt text](<img/Screenshot from 2023-06-20 14-33-41.png>)
+    ```python
+    q = np.array([0, -0.3, 0, -2.2, 0, 2, 0.79])
+    fk = np.eye(4)
+    for et in panda:
+        if et.isjoint:
+            fk = fk @ et.A(q[et.jindex])
+        else:
+            fk = fk @ et.A()
+    print(sm.SE3(fk))
+    ```
+
+    ![img](<img/Screenshot from 2023-06-20 14-33-41.png>)
+
+</details>
