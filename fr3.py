@@ -1,4 +1,4 @@
-#modified 06-17
+#modified 06-20
 
 import numpy as np
 from roboticstoolbox.robot.Robot import Robot
@@ -37,3 +37,9 @@ if __name__=="__main__": #this is for debugging, add value desired to see, run o
     print(len(r.links))
     for link in r.grippers[0].links:
         print(link)
+    '''
+    for link in r.links:
+        print(link)
+    '''
+    
+    print(r.grippers[0].tool)
