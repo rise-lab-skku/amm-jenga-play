@@ -1,3 +1,5 @@
+<!--fr3 machine readme-not including realsense-->
+
 # Amm-Jenga-Play
 Jenga play with Franka Reasearch 3 [SKKU 2023 URP Team2's Project]
 
@@ -80,6 +82,16 @@ rtb.tools.plot.xplot(qt.q, block=False)
 ```
 
 </details>
+<details><summary>'xacro' not defined error</summary>
+
+```python
+robot=fr3.fr3()
+```
+``` Error code: name 'xacro' is not defined ```
+
+- it's because of version issue
+- trace the xacro file and erase 'xacro.' syntax in code
+</details>
 
 
 # Summary
@@ -147,18 +159,49 @@ ets4 = ets2 * rtb.ETS([E4, E5])
 # Todo&Checklist
 Please describe here about what has been done and what to do.
 <details><summary>Part1</summary>
-
-<details><summary>vision</summary>
-
-</details>
 <details><summary>porting</summary>
 
-
+- [x] read xacro
+- [x] load yaml
+- [x] configure link
+- [x] simulate(fr3_test.ipynb)
+- [ ] solve real IK
+- [ ] verify limit
 </details>
 <details><summary>translation&rotation</summary>
 
 </details>
 <details><summary>collision</summary>
 
+- [ ] basic pybullet practice
+- TBD
+
 </details>
+</details>
+
+<details><summary>Part 2</summary>
+<details><summary>robot management</summary>
+
+- [ ] connect with ros
+- [ ] admin site study
+</details>
+<details><summary>pipeline</summary>
+
+- TBD
+</details>
+<details><summary>fingertip</summary>
+
+- [ ] 3D design
+</details>
+
+</details>
+
+<details><summary>Part 3</summary>
+
+- TBD
+</details>
+
+<details><summary>Part 4</summary>
+
+- TBD
 </details>
