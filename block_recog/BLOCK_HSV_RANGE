@@ -1,0 +1,42 @@
+GREEN 60
+lower_green = (60-20, 80, 80)
+upper_green = (60+20, 255, 255)
+img_mask = cv2.inRange(img_hsv, lower_green, upper_green)
+
+YELLOW 30
+lower_yellow = (30-10, 80, 80)
+upper_yellow = (30+10, 255, 255)
+area 1000
+
+BLUE 90
+lower_blue = (90-10, 80, 80)
+upper_blue = (90+10, 255, 255)
+area 700
+
+PURPLE
+lower_purple = (135-20, 30, 30)
+upper_purple = (135+20, 255, 255)
+area 600
+
+RED
+# lower boundary RED color range values; Hue (0 - 10)
+lower_red1 = np.array([0, 150, 100])
+upper_red1 = np.array([10, 255, 255])
+# upper boundary RED color range values; Hue (160 - 180)
+lower_red2 = np.array([160,150,100])
+upper_red2 = np.array([179,255,255])
+mask_red1 = cv2.inRange(img_hsv, lower_red1, upper_red1)
+mask_red2 = cv2.inRange(img_hsv, lower_red2, upper_red2)
+img_mask = mask_red1 + mask_red2
+
+PINK
+lower_pink1 = np.array([0, 30, 80])
+upper_pink1 = np.array([10, 130, 255])
+lower_pink2 = np.array([150,30,80])
+upper_pink2 = np.array([179,130,255])
+mask_pink1 = cv2.inRange(img_hsv, lower_red1, upper_red1)
+mask_pink2 = cv2.inRange(img_hsv, lower_red2, upper_red2)
+img_mask = mask_pink1 + mask_pink2
+
+
+DENOISE AREA THRESHOLD : 600
