@@ -15,7 +15,7 @@ class fr3(Robot):
         )
         #added top level directory
         super().__init__(
-            links,name=name,manufacturer="Franka Emika",gripper_links=links[16],urdf_string=urdf_string,urdf_filepath=urdf_filepath
+            links,name=name,gripper_links=links[17],urdf_string=urdf_string,urdf_filepath=urdf_filepath
         )
         
         #calling Robot class, not sure what it exactly do
