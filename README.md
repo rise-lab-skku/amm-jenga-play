@@ -24,4 +24,7 @@ Jenga play with Franka Reasearch 3 [SKKU 2023 URP Team2's Project]
 | :-: | :-: |
 | <img src="./block_recog/test_imgs/tower_color.png" width="400"> | <img src="./block_recog/test_imgs/tower_mask.png" width="400"> |
 
-### 
+### Get Point Cloud of Jenga Tower / Blocks
+| Tower Point Cloud | Tower Point Cloud  |
+| :-: | :-: |
+| <img src="./block_recog/test_imgs/jenga_pcd_outlier.png" width="400"> | <img src="./block_recog/test_imgs/block_pcd.png" width="400"> |
