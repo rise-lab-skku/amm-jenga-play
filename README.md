@@ -13,18 +13,27 @@ Jenga play with Franka Reasearch 3 [SKKU 2023 URP Team2's Project]
 ### Get **RGB Image & Depth Image** from RGB-D Camera (Intel® RealSense™ Depth Camera D435f)
 | RGB Image | Depth Image |
 | :-: | :-: |
-| <img src="./block_recog/test_imgs/color_new.png" width="400"> | <img src="./block_recog/test_imgs/depth_new.png" width="400"> |
+| <img src="./block_recog/test_imgs/jenga_tower_color.png" width="400"> | <img src="./block_recog/test_imgs/jenga_tower_depth.png" width="400"> |
 
 ### Get each Block's Mask from RGB Image
-| Extract Red | Red Mask | One Block Color | One Block Mask |
+| Extract Blue | Blue Mask | One Block Color | One Block Mask |
 | :-: | :-: | :-: | :-: |
-| <img src="./block_recog/test_imgs/red_filtered.png" width="400"> | <img src="./block_recog/test_imgs/red_masked.png" width="400"> | <img src="./block_recog/test_imgs/red_block1_rgb.png" width="400"> | <img src="./block_recog/test_imgs/red_block1_mask.png" width="400"> |
+| <img src="./imgs/blue_extract.png" width="400"> | <img src="./imgs/blue_mask.png" width="400"> | <img src="./imgs/blue_block1_color.png" width="400"> | <img src="./imgs/blue_block1_mask.png" width="400"> |
 
 | Blocks Merge | Masks Merge |
 | :-: | :-: |
-| <img src="./block_recog/test_imgs/tower_color.png" width="400"> | <img src="./block_recog/test_imgs/tower_mask.png" width="400"> |
+| <img src="./imgs/tower_color.png" width="400"> | <img src="./imgs/tower_mask.png" width="400"> |
 
 ### Get Point Cloud of Jenga Tower / Blocks
-| Tower Point Cloud | Tower Point Cloud  |
+| Tower Point Cloud | Block Point Cloud  |
 | :-: | :-: |
-| <img src="./block_recog/test_imgs/jenga_pcd_outlier.png" width="400"> | <img src="./block_recog/test_imgs/block_pcd.png" width="400"> |
+| <img src="./imgs/tower_pcd.png" width="400"> | <img src="./imgs/block_pcd.png" width="400"> |
+
+### Iterative Closest Point Registration
+| Source Point Cloud (Outlier Removed) | Target Point Cloud  |
+| :-: | :-: |
+| <img src="./imgs/jenga_tower_pcd.png" width="400"> | <img src="./imgs/target_pcd.png" width="400"> |
+
+| Before ICP | After ICP  |
+| :-: | :-: |
+| <img src="./imgs/before_icp.png" width="400"> | <img src="./imgs/after_icp.png" width="400"> |
