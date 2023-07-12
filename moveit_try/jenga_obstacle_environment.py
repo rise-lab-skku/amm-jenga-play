@@ -26,7 +26,7 @@ class CollisionSceneExample(object):
         rospy.sleep(2)
 
     def add_one_box(self):
-        box1_pose = [0.25, 0.25, 0.2, 0, 0, 0, 1]
+        box1_pose = [0.3, -0.3, 0.2, 0, 0, 0, 1]
         box1_dimensions = [0.08, 0.08, 0.4]
 
         self.add_box_object("box1", box1_dimensions, box1_pose)

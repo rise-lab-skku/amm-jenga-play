@@ -9,6 +9,8 @@ import geometry_msgs.msg
 import numpy as np
 from math import pi, tau, dist, fabs, cos
 from std_msgs.msg import String
+import franka_gripper.msg
+import actionlib
 from moveit_commander.conversions import pose_to_list
 
 def all_close(goal, actual, tolerance):
@@ -169,12 +171,12 @@ class MoveitPython(object):
         current_joints = move_group.get_current_joint_values()
         return all_close(joint_goal, current_joints, 0.01)
     
-    def go_to_near_y_state(self):
+    def go_to_near_back_state(self):
         move_group = self.move_group
         
         joint_goal = move_group.get_current_joint_values()
         print("Current joint state", joint_goal)
-        joint_goal = [1.06077417947944, -1.7623131521849051, 1.7677273209607072, -2.86967964843959, 0.27367140970585585, 1.8102461499026161, -0.9217375407841919]
+        joint_goal = [-1.0497303520709849, -1.7048965716682485, -1.7428855611566403, -2.871717975839894, -0.22288759366296076, 1.8232847928126132, 2.4435]
         print("Goal joint state", joint_goal)
         # The go command can be called with joint values, poses, or without any
         # parameters if you have already set the pose or joint target for the group
@@ -406,7 +408,86 @@ class MoveitPython(object):
         # If we exited the while loop without returning then we timed out
         return False
         ## END_SUB_TUTORIAL
+    def add_box(self, timeout=4):
+        # Copy class variables to local variables to make the web tutorials more clear.
+        # In practice, you should use the class variables directly unless you have a good
+        # reason not to.
+        box_name = self.box_name
+        scene = self.scene
+
+        ## BEGIN_SUB_TUTORIAL add_box
+        ##
+        ## Adding Objects to the Planning Scene
+        ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ## First, we will create a box in the planning scene between the fingers:
+        box_pose = geometry_msgs.msg.PoseStamped()
+        box_pose.header.frame_id = "panda_hand"
+        box_pose.pose.orientation.w = 1.0
+        box_pose.pose.position.z = 0.16  # above the panda_hand frame
+        box_name = "box"
+        scene.add_box(box_name, box_pose, size=(0.02, 0.08, 0.075))
+
+        ## END_SUB_TUTORIAL
+        # Copy local variables back to class variables. In practice, you should use the class
+        # variables directly unless you have a good reason not to.
+        self.box_name = box_name
+        return self.wait_for_state_update(box_is_known=True, timeout=timeout)
+
+    def attach_box(self, timeout=4):
+        # Copy class variables to local variables to make the web tutorials more clear.
+        # In practice, you should use the class variables directly unless you have a good
+        # reason not to.
+        box_name = self.box_name
+        robot = self.robot
+        scene = self.scene
+        eef_link = self.eef_link
+        group_names = self.group_names
+
+        ## BEGIN_SUB_TUTORIAL attach_object
+        ##
+        ## Attaching Objects to the Robot
+        ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ## Next, we will attach the box to the Panda wrist. Manipulating objects requires the
+        ## robot be able to touch them without the planning scene reporting the contact as a
+        ## collision. By adding link names to the ``touch_links`` array, we are telling the
+        ## planning scene to ignore collisions between those links and the box. For the Panda
+        ## robot, we set ``grasping_group = 'hand'``. If you are using a different robot,
+        ## you should change this value to the name of your end effector group name.
+        grasping_group = "panda_hand"
+        touch_links = robot.get_link_names(group=grasping_group)
+        scene.attach_box(eef_link, box_name, touch_links=touch_links)
+        ## END_SUB_TUTORIAL
+
+        # We wait for the planning scene to update.
+        return self.wait_for_state_update(
+            box_is_attached=True, box_is_known=False, timeout=timeout
+        ) 
         
+def grasp_client():
+    # Creates the SimpleActionClient, passing the type of the action
+    # (GraspAction) to the constructor.
+    client = actionlib.SimpleActionClient('/franka_gripper/grasp', franka_gripper.msg.GraspAction)
+
+    # Waits until the action server has started up and started
+    # listening for goals.
+    client.wait_for_server()
+
+    # Creates a goal to send to the action server.
+    goal = franka_gripper.msg.GraspGoal()
+    goal.width = 0.022
+    goal.epsilon.inner = 0.005
+    goal.epsilon.outer = 0.005
+    goal.speed = 0.1
+    goal.force = 5
+
+    # Sends the goal to the action server.
+    client.send_goal(goal)
+
+    # Waits for the server to finish performing the action.
+    client.wait_for_result()
+
+    # Prints out the result of executing the action
+    return client.get_result()  # A GraspResult
 
 def get_quaternion_from_euler(roll, pitch, yaw):
 
@@ -426,17 +507,25 @@ def main():
     try:
         move = MoveitPython()
         print("============ Default state ============")
-        move.go_to_joint_state()
+        #grasp_client()
+        #move.add_box()
+
+        # input("============ Press `Enter` to attach a Box to the Panda robot ...")
+        #move.attach_box()
         
+        move.go_to_joint_state()
+        grasp_client()
         print("============ moving state ============")
-        orientation = get_quaternion_from_euler(pi/2,pi/4,pi)
-        position = [0.25,-0.3, 0.3]
+        #move.go_to_near_back_state()
+        orientation = get_quaternion_from_euler(pi/2,pi/4,pi/2)
+        position = [-0.1,-0.3, 0.3]
         move.go_to_pose_goal(orientation, position)
+        grasp_client()
         
         print("============ go state ============")
-        orientation = get_quaternion_from_euler(pi/2,pi/4,pi)
-        position = [0.25,0, 0.3]
-        move.go_to_pose_goal(orientation, position)
+        # orientation = get_quaternion_from_euler(pi/2,pi/4,pi)
+        # position = [0.25,0, 0.3]
+        # move.go_to_pose_goal(orientation, position)
         
         # print("============ Configure Completed ============")
             
@@ -468,12 +557,12 @@ def main():
         
         # print("============ Startiing Position Move ============")
         # move.go_to_near_x_state()
-        # input("============ Startiing Position Competed ============")
-        # # print("============ Cartesian Move ============")
-        # # cartesian_move = [0,-0.2,0]
-        # # cartesian_plan, fraction = move.plan_cartesian_path(cartesian_move)
-        # # move.display_trajectory(cartesian_plan)
-        # # move.execute_plan(cartesian_plan)
+        input("============ Startiing Position Competed ============")
+        print("============ Cartesian Move ============")
+        cartesian_move = [0.6,0,0]
+        cartesian_plan, fraction = move.plan_cartesian_path(cartesian_move)
+        move.display_trajectory(cartesian_plan)
+        move.execute_plan(cartesian_plan)
         # # input("============ Cartesian Move Completed ============")
 
         # # input("============ Press `Enter` to add a box to the planning scene ...")
@@ -504,5 +593,5 @@ def main():
 
 
 if __name__ == "__main__":
-    #os.system("jenga_obstacle_environment.py")
+    os.system("jenga_obstacle_environment.py")
     main()
