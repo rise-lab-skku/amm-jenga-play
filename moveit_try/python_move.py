@@ -12,6 +12,8 @@ from std_msgs.msg import String
 import franka_gripper.msg
 import actionlib
 from moveit_commander.conversions import pose_to_list
+import time
+from moveit_commander import RobotCommander, PlanningSceneInterface
 
 def all_close(goal, actual, tolerance):
     """
@@ -70,7 +72,8 @@ class MoveitPython(object):
         ## If you are using a different robot, change this value to the name of your robot
         ## arm planning group.
         ## This interface can be used to plan and execute motions:
-        group_name = "panda_arm"
+        #group_name = "panda_arm"
+        group_name = "panda_manipulator"
         move_group = moveit_commander.MoveGroupCommander(group_name)
 
         ## Create a `DisplayTrajectory`_ ROS publisher which is used to display
@@ -151,14 +154,15 @@ class MoveitPython(object):
 
         # For testing:
         current_joints = move_group.get_current_joint_values()
+        print("hello Current joint state", current_joints)
         return all_close(joint_goal, current_joints, 0.01)
     
     def go_to_near_x_state(self):
 
         move_group = self.move_group
 
-        print("Current joint state", joint_goal)
-        joint_goal = [-0.3403706201516723, -0.3527600742498365, -0.3443217582537577, -2.632930266027574, 1.0198664172919751, 1.1603967371564619, 1.549689977170946]
+        #print("Current joint state", joint_goal)
+        joint_goal = [-0.5642802825771309, -0.3176058804371666, 1.2210909931193548, -2.697525270395596, -0.882452496586874, 1.455436947813847, 0.17058539340911308]
         print("Goal joint state", joint_goal)
         move_group.go(joint_goal, wait=True)
 
@@ -176,7 +180,7 @@ class MoveitPython(object):
         
         joint_goal = move_group.get_current_joint_values()
         print("Current joint state", joint_goal)
-        joint_goal = [-1.0497303520709849, -1.7048965716682485, -1.7428855611566403, -2.871717975839894, -0.22288759366296076, 1.8232847928126132, 2.4435]
+        joint_goal = [-0.8472730112936238, -1.737166720487715, -1.6616151074700978, -2.541214630003684, -0.18014182350950803, 1.6928706122109383, 2.4427701421935644]
         print("Goal joint state", joint_goal)
         # The go command can be called with joint values, poses, or without any
         # parameters if you have already set the pose or joint target for the group
@@ -217,6 +221,15 @@ class MoveitPython(object):
         ## Now, we call the planner to compute the plan and execute it.
         # `go()` returns a boolean indicating whether the planning and execution was successful.
         success = move_group.go(wait=True)
+        
+        
+        #plan = move_group.plan()
+        
+        
+        
+        #return plan
+        
+        
         # Calling `stop()` ensures that there is no residual movement
         move_group.stop()
         # It is always good to clear your targets after planning with poses.
@@ -235,49 +248,23 @@ class MoveitPython(object):
         return all_close(pose_goal, current_pose, 0.01)
 
     def go_to_default(self):
-         # Copy class variables to local variables to make the web tutorials more clear.
-        # In practice, you should use the class variables directly unless you have a good
-        # reason not to.
         move_group = self.move_group
-
-        ## BEGIN_SUB_TUTORIAL plan_to_pose
-        ##
-        ## Planning to a Pose Goal
-        ## ^^^^^^^^^^^^^^^^^^^^^^^
-        ## We can plan a motion for this group to a desired pose for the
-        ## end-effector:
         
-        orientation = get_quaternion_from_euler(pi,-pi/2,-pi/4)
-        position = [0.3, 0.0, 0.4]
-        pose_goal = geometry_msgs.msg.Pose()
-        pose_goal.orientation.w = orientation[3]
-        pose_goal.orientation.x = orientation[0]
-        pose_goal.orientation.y = orientation[1]
-        pose_goal.orientation.z = orientation[2]
+        joint_goal = move_group.get_current_joint_values()
+        print("Current joint state", joint_goal)
+        joint_goal = [7.809961210004984e-05, -0.7854783011459989, 4.2295274930074814e-05, -2.35620358171, 3.924147877842187e-05, 1.5707644200915958, 0.7854613333776836]
+        print("Goal joint state", joint_goal)
+        # The go command can be called with joint values, poses, or without any
+        # parameters if you have already set the pose or joint target for the group
+        move_group.go(joint_goal, wait=True)
 
-        pose_goal.position.x = position[0]
-        pose_goal.position.y = position[1]
-        pose_goal.position.z = position[2]
-
-        move_group.set_pose_target(pose_goal)
-
-        ## Now, we call the planner to compute the plan and execute it.
-        # `go()` returns a boolean indicating whether the planning and execution was successful.
-        success = move_group.go(wait=True)
-        # Calling `stop()` ensures that there is no residual movement
-        move_group.stop()       # orientation = get_quaternion_from_euler(-pi/2,-pi/4,pi)
-        # position = [0.4, 0.5, 0.4]
-        # It is always good to clear your targets after planning with poses.
-        # Note: there is no equivalent function for clear_joint_value_targets().
-        move_group.clear_pose_targets()
+        # Calling ``stop()`` ensures that there is no residual movement
+        move_group.stop()
 
         ## END_SUB_TUTORIAL
-
         # For testing:
-        # Note that since this section of code will not be included in the tutorials
-        # we use the class variable rather than the copied state variable
-        current_pose = self.move_group.get_current_pose().pose
-        return all_close(pose_goal, current_pose, 0.01)
+        current_joints = move_group.get_current_joint_values()
+        return all_close(joint_goal, current_joints, 0.01)
 
 
     def plan_cartesian_path(self, cartesian_move):
@@ -408,7 +395,9 @@ class MoveitPython(object):
         # If we exited the while loop without returning then we timed out
         return False
         ## END_SUB_TUTORIAL
-    def add_box(self, timeout=4):
+
+
+    def add_tcp_box(self, timeout=4):
         # Copy class variables to local variables to make the web tutorials more clear.
         # In practice, you should use the class variables directly unless you have a good
         # reason not to.
@@ -424,7 +413,7 @@ class MoveitPython(object):
         box_pose.header.frame_id = "panda_hand"
         box_pose.pose.orientation.w = 1.0
         box_pose.pose.position.z = 0.16  # above the panda_hand frame
-        box_name = "box"
+        box_name = "tcp_box"
         scene.add_box(box_name, box_pose, size=(0.02, 0.08, 0.075))
 
         ## END_SUB_TUTORIAL
@@ -462,8 +451,30 @@ class MoveitPython(object):
         return self.wait_for_state_update(
             box_is_attached=True, box_is_known=False, timeout=timeout
         ) 
-        
-def grasp_client():
+    
+    def detach_box(self, timeout=4):
+        # Copy class variables to local variables to make the web tutorials more clear.
+        # In practice, you should use the class variables directly unless you have a good
+        # reason not to.
+        box_name = self.box_name
+        scene = self.scene
+        eef_link = self.eef_link
+
+        ## BEGIN_SUB_TUTORIAL detach_object
+        ##
+        ## Detaching Objects from the Robot
+        ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ## We can also detach and remove the object from the planning scene:
+        scene.remove_attached_object(eef_link, name=box_name)
+        ## END_SUB_TUTORIAL
+
+        # We wait for the planning scene to update.
+        return self.wait_for_state_update(
+            box_is_known=True, box_is_attached=False, timeout=timeout
+        )
+
+
+def grasp_client(width=0.022):
     # Creates the SimpleActionClient, passing the type of the action
     # (GraspAction) to the constructor.
     client = actionlib.SimpleActionClient('/franka_gripper/grasp', franka_gripper.msg.GraspAction)
@@ -474,7 +485,7 @@ def grasp_client():
 
     # Creates a goal to send to the action server.
     goal = franka_gripper.msg.GraspGoal()
-    goal.width = 0.022
+    goal.width = width
     goal.epsilon.inner = 0.005
     goal.epsilon.outer = 0.005
     goal.speed = 0.1
@@ -503,24 +514,48 @@ def get_quaternion_from_euler(roll, pitch, yaw):
     return [qx, qy, qz, qw]
 
 def main():
-    
+
     try:
         move = MoveitPython()
         print("============ Default state ============")
-        #grasp_client()
-        #move.add_box()
-
-        # input("============ Press `Enter` to attach a Box to the Panda robot ...")
-        #move.attach_box()
+        move.add_tcp_box()
         
+        move.attach_box()
+        time.sleep(1)
         move.go_to_joint_state()
-        grasp_client()
-        print("============ moving state ============")
+        #grasp_client()
+        
+        
+        input("plan ok enter enter")
+        #move.add_jenga_box()
         #move.go_to_near_back_state()
-        orientation = get_quaternion_from_euler(pi/2,pi/4,pi/2)
-        position = [-0.1,-0.3, 0.3]
-        move.go_to_pose_goal(orientation, position)
-        grasp_client()
+        # orientation = get_quaternion_from_euler(pi/2,pi/2,pi/2)
+        # position = [0,-0.3, 0.3]
+        # move.go_to_pose_goal(orientation, position)
+        # input("plan ok enter enter")
+    
+        
+        #
+        #move.display_trajectory(plan)
+        #move.execute_plan(plan)
+        
+        
+        move.go_to_near_back_state()
+        input("plan ok enter enter")
+        #grasp_client()
+        
+        cartesian_move = [0.1,0,0]
+        cartesian_plan, fraction = move.plan_cartesian_path(cartesian_move)
+        move.display_trajectory(cartesian_plan)
+        move.execute_plan(cartesian_plan)
+        input("plan ok enter enter")
+        move.go_to_default()
+        input("plan ok enter enter")
+        move.go_to_near_x_state()
+        # orientation = get_quaternion_from_euler(0,pi/2,-pi/2)
+        # position = [0.3, -0.1, 0.3]
+        # move.go_to_pose_goal(orientation, position)
+        # input("plan ok enter enter")
         
         print("============ go state ============")
         # orientation = get_quaternion_from_euler(pi/2,pi/4,pi)
@@ -557,12 +592,12 @@ def main():
         
         # print("============ Startiing Position Move ============")
         # move.go_to_near_x_state()
-        input("============ Startiing Position Competed ============")
-        print("============ Cartesian Move ============")
-        cartesian_move = [0.6,0,0]
-        cartesian_plan, fraction = move.plan_cartesian_path(cartesian_move)
-        move.display_trajectory(cartesian_plan)
-        move.execute_plan(cartesian_plan)
+        # input("============ Startiing Position Competed ============")
+        # print("============ Cartesian Move ============")
+        # cartesian_move = [0.2,0,0]
+        # cartesian_plan, fraction = move.plan_cartesian_path(cartesian_move)
+        # move.display_trajectory(cartesian_plan)
+        # move.execute_plan(cartesian_plan)
         # # input("============ Cartesian Move Completed ============")
 
         # # input("============ Press `Enter` to add a box to the planning scene ...")
@@ -593,5 +628,5 @@ def main():
 
 
 if __name__ == "__main__":
-    os.system("jenga_obstacle_environment.py")
+    os.system("python "+os.path.dirname(__file__)+"/jenga_obstacle_environment.py")
     main()
