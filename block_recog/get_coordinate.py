@@ -78,7 +78,7 @@ def image_callback(rgb_msg, depth_msg, transform_matrix, resize, move):
     for col, pcds in zip(colors, blocks_pcd_by_color):
         if col != target_block_color:
             continue
-        print(col)
+        # print(col)
         
         for idx, pcd in enumerate(pcds):
             if idx != target_block_label:
