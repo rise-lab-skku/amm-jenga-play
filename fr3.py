@@ -16,7 +16,6 @@ class fr3(Robot):
             xacro_tld="franka_description"
         )
         # added top level directory
-        #print(urdf_string)
         #print(links[17])
         qdlim=[]
         l=[i.start() for i in re.finditer(" velocity",urdf_string)]
@@ -24,11 +23,11 @@ class fr3(Robot):
             idx=urdf_string.find('"',l[i]+11)
             qdlim.append(urdf_string[l[i]+11:idx])
         #read qdlim from urdf, not by hardcoding
-        super().__init__(
-            links,name=name,gripper_links=links[18]
-        )
-        #calling Robot class, not sure what it exactly do
 
+        super().__init__(
+            links,gripper_links=links[17],tool=SE3(0,0,0.1974)
+        )
+        self.grippers[0].tool=SE3(0,0,0.1034)
         #end-effector's position
 
         self.qdlim=np.array(qdlim)
@@ -41,7 +40,9 @@ class fr3(Robot):
 
 if __name__=="__main__": #this is for debugging, add value desired to see, run only when directly run this file
     r=fr3()
-    print(r)
+    print(r.grippers[0])
+    print(r.links[17])
+    #print(r)
     # print(r.tool)
     # print(len(r.links))
     '''

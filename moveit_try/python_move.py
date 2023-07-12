@@ -70,7 +70,7 @@ class MoveitPython(object):
         ## If you are using a different robot, change this value to the name of your robot
         ## arm planning group.
         ## This interface can be used to plan and execute motions:
-        group_name = "panda_arm"
+        group_name = "panda_manipulator2"
         move_group = moveit_commander.MoveGroupCommander(group_name)
 
         ## Create a `DisplayTrajectory`_ ROS publisher which is used to display
@@ -514,13 +514,13 @@ def main():
         #move.attach_box()
 
         move.go_to_joint_state()
-        grasp_client()
+        #grasp_client()
         print("============ moving state ============")
         #move.go_to_near_back_state()
         orientation = get_quaternion_from_euler(pi/2,pi/4,pi/2)
         position = [-0.1,-0.3, 0.3]
         move.go_to_pose_goal(orientation, position)
-        grasp_client()
+        #grasp_client()
 
         print("============ go state ============")
         # orientation = get_quaternion_from_euler(pi/2,pi/4,pi)
@@ -557,13 +557,13 @@ def main():
 
         # print("============ Startiing Position Move ============")
         # move.go_to_near_x_state()
-        input("============ Startiing Position Competed ============")
-        print("============ Cartesian Move ============")
-        cartesian_move = [0.6,0,0]
+        #input("============ Startiing Position Competed ============")
+        input("============ Cartesian Move ============")
+        cartesian_move = [0.1,0,0]
         cartesian_plan, fraction = move.plan_cartesian_path(cartesian_move)
         move.display_trajectory(cartesian_plan)
         move.execute_plan(cartesian_plan)
-        # # input("============ Cartesian Move Completed ============")
+        # input("============ Cartesian Move Completed ============")
 
         # # input("============ Press `Enter` to add a box to the planning scene ...")
         # # tutorial.add_box()
@@ -593,7 +593,5 @@ def main():
 
 
 if __name__ == "__main__":
-    os.system("jenga_obstacle_environment.py")
+    #os.system("python "+os.path.dirname(__file__)+"/jenga_obstacle_environment.py")
     main()
-
-    os.system("jenga_obstacle_environment.py")
