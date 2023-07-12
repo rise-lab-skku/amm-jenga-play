@@ -527,16 +527,21 @@ def main():
         move.go_to_joint_state()
         #grasp_client()
 
-
         input("plan ok enter enter")
         #move.add_jenga_box()
         #move.go_to_near_back_state()
-        # orientation = get_quaternion_from_euler(pi/2,pi/2,pi/2)
-        # position = [0,-0.3, 0.3]
-        # move.go_to_pose_goal(orientation, position)
-        # input("plan ok enter enter")
+        orientation = get_quaternion_from_euler(pi/2,pi/2,pi/2)
+        position = [0,-0.5, 0.3]
+        move.go_to_pose_goal(orientation, position)
+        input("plan ok enter enter")
+        cartesian_move = [0.1,0.0,0]
+        cartesian_plan, fraction = move.plan_cartesian_path(cartesian_move)
+        move.display_trajectory(cartesian_plan)
 
 
+
+        input("plan ok enter enter")
+        move.execute_plan(cartesian_plan)
         #
         #move.display_trajectory(plan)
         #move.execute_plan(plan)
@@ -544,6 +549,7 @@ def main():
 
         #move.go_to_near_back_state()
         input("plan ok enter enter")
+        move.go_to_default()
         grasp_client(width=0.02)
         move.go_to_near_x_state()
         # cartesian_move = [0,-0.1,0]
@@ -634,5 +640,5 @@ def main():
 
 
 if __name__ == "__main__":
-    #os.system("python "+os.path.dirname(__file__)+"/jenga_obstacle_environment.py")
+    os.system("python3 "+os.path.dirname(__file__)+"/jenga_obstacle_environment.py")
     main()

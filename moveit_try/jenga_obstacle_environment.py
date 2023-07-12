@@ -41,7 +41,7 @@ class CollisionSceneExample(object):
         box2_pose = [0, 1.5, 1, 0, 0, 0, 1]
         box2_dimensions = [2, 2, 2]
 
-        box3_pose = [-1.5, 0, 1, 0, 0, 0, 1]
+        box3_pose = [-1.7, 0, 1, 0, 0, 0, 1]
         box3_dimensions = [2, 2, 2]
 
         box4_pose = [0, 0, -1.05, 0, 0, 0, 1]
