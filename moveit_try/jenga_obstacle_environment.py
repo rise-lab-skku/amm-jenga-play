@@ -26,11 +26,11 @@ class CollisionSceneExample(object):
         # TODO: need to replace this sleep by explicitly waiting for the scene to be updated.
         rospy.sleep(2)
 
-    def add_one_box(self):
+    def add_jenga_box(self):
         box1_pose = [0.3, -0.3, 0.2, 0, 0, 0, 1]
         box1_dimensions = [0.08, 0.08, 0.4]
 
-        self.add_box_object("box1", box1_dimensions, box1_pose)
+        self.add_scene_object("box1", box1_dimensions, box1_pose)
 
         print("============ Added one obstacle to RViz!!")
 
@@ -51,14 +51,14 @@ class CollisionSceneExample(object):
         box5_dimensions = [2, 2, 2]
 
         #self.add_box_object("jenga", jenga_dimensions, jenga_pose)
-        self.add_box_object("box2", box2_dimensions, box2_pose)
-        self.add_box_object("box3", box3_dimensions, box3_pose)
-        self.add_box_object("box4", box4_dimensions, box4_pose)
-        self.add_box_object("box5", box5_dimensions, box5_pose)
+        self.add_scene_object("box2", box2_dimensions, box2_pose)
+        self.add_scene_object("box3", box3_dimensions, box3_pose)
+        self.add_scene_object("box4", box4_dimensions, box4_pose)
+        self.add_scene_object("box5", box5_dimensions, box5_pose)
 
         print("========== Added 4 obstacles to the scene!!")
 
-    def add_box_object(self, name, dimensions, pose):
+    def add_scene_object(self, name, dimensions, pose):
         p = geometry_msgs.msg.PoseStamped()
         p.header.frame_id = self.robot.get_planning_frame()
         p.header.stamp = rospy.Time.now()
