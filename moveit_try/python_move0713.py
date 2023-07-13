@@ -594,6 +594,7 @@ def main():
                 ans=input("cartesian move:")
                 cartesian_move = [float(ans.split(' ')[i]) for i in range(3)]
                 cartesian_plan, fraction = move.plan_cartesian_path(cartesian_move)
+                print(type(cartesian_plan))
                 move.display_trajectory(cartesian_plan)
                 if input("plan ok enter enter")=='q':
                     print("quit")
