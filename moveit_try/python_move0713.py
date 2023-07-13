@@ -52,7 +52,6 @@ class MoveitPython(object):
         super(MoveitPython, self).__init__()
 
         ## BEGIN_SUB_TUTORIAL setup
-        ##
         ## First initialize `moveit_commander`_ and a `rospy`_ node:
         moveit_commander.roscpp_initialize(sys.argv)
         rospy.init_node("move_group_python_interface_tutorial", anonymous=True)
@@ -65,7 +64,7 @@ class MoveitPython(object):
         ## for getting, setting, and updating the robot's internal understanding of the
         ## surrounding world:
         scene = moveit_commander.PlanningSceneInterface()
-
+        scene.remove_world_object()
         ## Instantiate a `MoveGroupCommander`_ object.  This object is an interface
         ## to a planning group (group of joints).  In this tutorial the group is the primary
         ## arm joints in the Panda robot, so we set the group's name to "panda_arm".
@@ -162,7 +161,7 @@ class MoveitPython(object):
         move_group = self.move_group
 
         #print("Current joint state", joint_goal)
-        joint_goal = [-0.4167545667813553, 0.6317899457437121, 0.964818479466587, -2.316581751144892, -1.3126282230777986, 0.9567712269792334, 0.5524828658164344]
+        joint_goal = [-0.8380633746317598, 0.39385471239977904, 0.8367446307415982, -2.5353422721452823, -1.7074258155910929, 1.3142604798060638, 0.42470801205075626]
         print("Goal joint state", joint_goal)
         move_group.go(joint_goal, wait=True)
 
@@ -183,7 +182,7 @@ class MoveitPython(object):
 
         joint_goal = move_group.get_current_joint_values()
         print("Current joint state", joint_goal)
-        joint_goal = [-0.23081663022630322, -1.5116293250424995, -1.8860979072420616, -2.6022039394421976, -0.024275083909371775, 2.363655958881634, 2.0549816900089564]
+        joint_goal = [-0.23087391448377106, -1.511650887916351, -1.8861559371635541, -2.6021844915019354, -0.02423753989194697, 2.3635854590535486, 2.055037902733283]
         print("Goal joint state", joint_goal)
         # The go command can be called with joint values, poses, or without any
         # parameters if you have already set the pose or joint target for the group
@@ -399,32 +398,6 @@ class MoveitPython(object):
         return False
         ## END_SUB_TUTORIAL
 
-
-    def add_tcp_box(self, timeout=4):
-        # Copy class variables to local variables to make the web tutorials more clear.
-        # In practice, you should use the class variables directly unless you have a good
-        # reason not to.
-        box_name = self.box_name
-        scene = self.scene
-
-        ## BEGIN_SUB_TUTORIAL add_box
-        ##
-        ## Adding Objects to the Planning Scene
-        ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        ## First, we will create a box in the planning scene between the fingers:
-        box_pose = geometry_msgs.msg.PoseStamped()
-        box_pose.header.frame_id = "panda_hand"
-        box_pose.pose.orientation.w = 1.0
-        box_pose.pose.position.z = 0.16  # above the panda_hand frame
-        box_name = "tcp_box"
-        scene.add_box(box_name, box_pose, size=(0.02, 0.09, 0.085))
-
-        ## END_SUB_TUTORIAL
-        # Copy local variables back to class variables. In practice, you should use the class
-        # variables directly unless you have a good reason not to.
-        self.box_name = box_name
-        return self.wait_for_state_update(box_is_known=True, timeout=timeout)
-
     def add_camera_box(self, timeout=4):
         # Copy class variables to local variables to make the web tutorials more clear.
         # In practice, you should use the class variables directly unless you have a good
@@ -451,12 +424,93 @@ class MoveitPython(object):
         # variables directly unless you have a good reason not to.
         self.box_name = box_name
         return self.wait_for_state_update(box_is_known=True, timeout=timeout)
-
-    def attach_box(self, timeout=4):
+    
+    def add_tcp_box(self, timeout=4):
         # Copy class variables to local variables to make the web tutorials more clear.
         # In practice, you should use the class variables directly unless you have a good
         # reason not to.
         box_name = self.box_name
+        scene = self.scene
+
+        ## BEGIN_SUB_TUTORIAL add_box
+        ##
+        ## Adding Objects to the Planning Scene
+        ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ## First, we will create a box in the planning scene between the fingers:
+        box_pose = geometry_msgs.msg.PoseStamped()
+        box_pose.header.frame_id = "panda_hand"
+        box_pose.pose.orientation.w = 1.0
+        box_pose.pose.position.z = 0.16  # above the panda_hand frame
+        box_name = "tcp_box"
+        scene.add_box(box_name, box_pose, size=(0.02, 0.09, 0.09))
+
+        ## END_SUB_TUTORIAL
+        # Copy local variables back to class variables. In practice, you should use the class
+        # variables directly unless you have a good reason not to.
+        self.box_name = box_name
+        return self.wait_for_state_update(box_is_known=True, timeout=timeout)
+    
+    def add_jenga_box(self, timeout=4):
+        # Copy class variables to local variables to make the web tutorials more clear.
+        # In practice, you should use the class variables directly unless you have a good
+        # reason not to.
+        box_name = self.box_name
+        scene = self.scene
+
+        ## BEGIN_SUB_TUTORIAL add_box
+        ##
+        ## Adding Objects to the Planning Scene
+        ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ## First, we will create a box in the planning scene between the fingers:
+        box_pose = geometry_msgs.msg.PoseStamped()
+        box_pose.header.frame_id = self.robot.get_planning_frame()
+        box_pose.pose.orientation.w = 1.0
+        box_pose.pose.position.x = 0.4  # above the panda_hand frame
+        box_pose.pose.position.y = -0.4  # above the panda_hand frame
+        box_pose.pose.position.z = 0.2  # above the panda_hand frame
+        box_name = "jenga_box"
+        scene.add_box(box_name, box_pose, size=(0.1, 0.1, 0.4))
+
+        ## END_SUB_TUTORIAL
+        # Copy local variables back to class variables. In practice, you should use the class
+        # variables directly unless you have a good reason not to.
+        self.box_name = box_name
+        return self.wait_for_state_update(box_is_known=True, timeout=timeout)
+
+    def attach_camera_box(self, timeout=4):
+        # Copy class variables to local variables to make the web tutorials more clear.
+        # In practice, you should use the class variables directly unless you have a good
+        # reason not to.
+        box_name = "camera_box"
+        robot = self.robot
+        scene = self.scene
+        eef_link = self.eef_link
+        group_names = self.group_names
+
+        ## BEGIN_SUB_TUTORIAL attach_object
+        ##
+        ## Attaching Objects to the Robot
+        ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ## Next, we will attach the box to the Panda wrist. Manipulating objects requires the
+        ## robot be able to touch them without the planning scene reporting the contact as a
+        ## collision. By adding link names to the ``touch_links`` array, we are telling the
+        ## planning scene to ignore collisions between those links and the box. For the Panda
+        ## robot, we set ``grasping_group = 'hand'``. If you are using a different robot,
+        ## you should change this value to the name of your end effector group name.
+        grasping_group = "panda_hand"
+        touch_links = robot.get_link_names(group=grasping_group)
+        scene.attach_box(eef_link, box_name, touch_links=touch_links)
+        ## END_SUB_TUTORIAL
+
+        # We wait for the planning scene to update.
+        return self.wait_for_state_update(
+            box_is_attached=True, box_is_known=False, timeout=timeout
+        )
+    def attach_tcp_box(self, timeout=4):
+        # Copy class variables to local variables to make the web tutorials more clear.
+        # In practice, you should use the class variables directly unless you have a good
+        # reason not to.
+        box_name = "tcp_box"
         robot = self.robot
         scene = self.scene
         eef_link = self.eef_link
@@ -486,10 +540,9 @@ class MoveitPython(object):
         # Copy class variables to local variables to make the web tutorials more clear.
         # In practice, you should use the class variables directly unless you have a good
         # reason not to.
-        box_name = self.box_name
+        box_name = "camra_box"
         scene = self.scene
         eef_link = self.eef_link
-
         ## BEGIN_SUB_TUTORIAL detach_object
         ##
         ## Detaching Objects from the Robot
@@ -502,7 +555,28 @@ class MoveitPython(object):
         return self.wait_for_state_update(
             box_is_known=True, box_is_attached=False, timeout=timeout
         )
+    def remove_box(self, timeout=4):
+        # Copy class variables to local variables to make the web tutorials more clear.
+        # In practice, you should use the class variables directly unless you have a good
+        # reason not to.
+        box_name = "jenga_box"
+        scene = self.scene
 
+        ## BEGIN_SUB_TUTORIAL remove_object
+        ##
+        ## Removing Objects from the Planning Scene
+        ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ## We can remove the box from the world.
+        scene.remove_world_object(box_name)
+
+        ## **Note:** The object must be detached before we can remove it from the world
+        ## END_SUB_TUTORIAL
+
+        # We wait for the planning scene to update.
+        return self.wait_for_state_update(
+            box_is_attached=False, box_is_known=False, timeout=timeout
+        )
+        
 
 def grasp_client(width=0.022):
     # Creates the SimpleActionClient, passing the type of the action
@@ -566,21 +640,24 @@ def get_quaternion_from_euler(roll, pitch, yaw):
     return [qx, qy, qz, qw]
 
 def main():
-
     try:
         move = MoveitPython()
+        
+        os.system("python3 "+os.path.dirname(__file__)+"/jenga_obstacle_environment.py")
         rospy.sleep(1)
         #print("============ Default state ============")
-        move.add_tcp_box()
         move.add_camera_box()
-        move.attach_box()
-
+        move.add_tcp_box()
+        move.attach_camera_box()
+        move.attach_tcp_box()
+        
+        move.add_jenga_box()
 
         while True:
             command=input("\ncommand:")
             if command=="init":
-                move_client()
-                move_client(0.08)
+                #move_client()
+                #move_client(0.08)
                 move.go_to_default()
             if command=="init2":
                 move.go_to_joint_state()
@@ -616,25 +693,63 @@ def main():
 
 
             elif command=="cue_test":
+                move.go_to_joint_state()
+                move.go_to_back_state()
+                move.remove_box()
+                time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([0.11,0,0])[0])
                 time.sleep(1)
-                grasp_client(0.072)
+                #grasp_client(0.072)
                 time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([-0.11,0,0])[0])
                 time.sleep(1)
-                move_client(0.08)
+                
+                #move_client(0.08)
                 time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([0,0,0.015])[0])
                 time.sleep(1)
-                move_client(0)
+                #move_client(0)
                 time.sleep(1)
+                
                 move.execute_plan(move.plan_cartesian_path([0.085,0,0])[0])
                 time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([-0.085,0,0])[0])
                 time.sleep(1)
-                move_client(0.08)
-
-
+                #move_client(0.08)
+                
+                move.add_jenga_box()
+                time.sleep(1)
+                
+                
+                move.go_to_right_state()
+                time.sleep(1)
+                
+                move.remove_box()
+                
+                move.execute_plan(move.plan_cartesian_path([0,0,0.015])[0])
+                move.execute_plan(move.plan_cartesian_path([0,-0.11,0])[0])
+                time.sleep(1)
+                #grasp_client(0.072)
+                time.sleep(1)
+                move.execute_plan(move.plan_cartesian_path([0,0.11,0,0])[0])
+                time.sleep(1)
+                
+                #move_client(0.08)
+                time.sleep(1)
+                move.execute_plan(move.plan_cartesian_path([0,0,0.015])[0])
+                time.sleep(1)
+                #move_client(0)
+                time.sleep(1)
+                
+                move.execute_plan(move.plan_cartesian_path([0,-0.085,0])[0])
+                time.sleep(1)
+                move.execute_plan(move.plan_cartesian_path([0,0.085,0,0])[0])
+                time.sleep(1)
+                #move_client(0.08)
+                
+                move.add_jenga_box()
+                move.go_to_default()
+                
             else:
                 print("command error")
         #move.go_to_joint_state()
@@ -739,5 +854,5 @@ def main():
 
 
 if __name__ == "__main__":
-    os.system("python3 "+os.path.dirname(__file__)+"/jenga_obstacle_environment.py")
     main()
+    
