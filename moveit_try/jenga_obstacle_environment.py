@@ -35,8 +35,8 @@ class CollisionSceneExample(object):
         print("============ Added one obstacle to RViz!!")
 
     def add_four_boxes(self):
-        box1_pose = [0.25, -0.25, 0.2, 0, 0, 0, 1]
-        box1_dimensions = [0.08, 0.08, 0.4]
+        jenga_pose = [0.4, -0.4, 0.2, 0, 0, 0, 1]
+        jenga_dimensions = [0.1, 0.1, 0.3]
 
         box2_pose = [0, 1.5, 1, 0, 0, 0, 1]
         box2_dimensions = [2, 2, 2]
@@ -44,13 +44,13 @@ class CollisionSceneExample(object):
         box3_pose = [-1.7, 0, 1, 0, 0, 0, 1]
         box3_dimensions = [2, 2, 2]
 
-        box4_pose = [0, 0, -1.05, 0, 0, 0, 1]
+        box4_pose = [0, 0, -1.0, 0, 0, 0, 1]
         box4_dimensions = [2, 2, 2]
 
         box5_pose = [0, -2, 1, 0, 0, 0, 1]
         box5_dimensions = [2, 2, 2]
 
-        self.add_box_object("box1", box1_dimensions, box1_pose)
+        #self.add_box_object("jenga", jenga_dimensions, jenga_pose)
         self.add_box_object("box2", box2_dimensions, box2_pose)
         self.add_box_object("box3", box3_dimensions, box3_pose)
         self.add_box_object("box4", box4_dimensions, box4_pose)

@@ -157,12 +157,12 @@ class MoveitPython(object):
         print("hello Current joint state", current_joints)
         return all_close(joint_goal, current_joints, 0.01)
 
-    def go_to_near_x_state(self):
+    def go_to_right_state(self):
 
         move_group = self.move_group
 
         #print("Current joint state", joint_goal)
-        joint_goal = [-0.5642802825771309, -0.3176058804371666, 1.2210909931193548, -2.697525270395596, -0.882452496586874, 1.455436947813847, 0.17058539340911308]
+        joint_goal = [-0.4167545667813553, 0.6317899457437121, 0.964818479466587, -2.316581751144892, -1.3126282230777986, 0.9567712269792334, 0.5524828658164344]
         print("Goal joint state", joint_goal)
         move_group.go(joint_goal, wait=True)
 
@@ -172,26 +172,32 @@ class MoveitPython(object):
         ## END_SUB_TUTORIAL
 
         # For testing:
+        current_pose = self.move_group.get_current_pose().pose
         current_joints = move_group.get_current_joint_values()
+        print("Current pose state", current_pose)
+        print("Current joint state", current_joints)
         return all_close(joint_goal, current_joints, 0.01)
 
-    def go_to_near_back_state(self):
+    def go_to_back_state(self):
         move_group = self.move_group
 
         joint_goal = move_group.get_current_joint_values()
         print("Current joint state", joint_goal)
-        joint_goal = [-0.8472730112936238, -1.737166720487715, -1.6616151074700978, -2.541214630003684, -0.18014182350950803, 1.6928706122109383, 2.4427701421935644]
+        joint_goal = [-0.23081663022630322, -1.5116293250424995, -1.8860979072420616, -2.6022039394421976, -0.024275083909371775, 2.363655958881634, 2.0549816900089564]
         print("Goal joint state", joint_goal)
         # The go command can be called with joint values, poses, or without any
         # parameters if you have already set the pose or joint target for the group
         move_group.go(joint_goal, wait=True)
 
-        # Calling ``stop()`` ensures that there is no residual movement
+        # Calling ``stop()`` ensures that there is no residual movementin
         move_group.stop()
 
         ## END_SUB_TUTORIAL
         # For testing:
+        current_pose = self.move_group.get_current_pose().pose
         current_joints = move_group.get_current_joint_values()
+        print("Current pose state", current_pose)
+        print("Current joint state", current_joints)
         return all_close(joint_goal, current_joints, 0.01)
 
     def go_to_pose_goal(self, orientation, position):
@@ -252,7 +258,7 @@ class MoveitPython(object):
 
         joint_goal = move_group.get_current_joint_values()
         print("Current joint state", joint_goal)
-        joint_goal = [7.809961210004984e-05, -0.7854783011459989, 4.2295274930074814e-05, -2.35620358171, 3.924147877842187e-05, 1.5707644200915958, 0.7854613333776836]
+        joint_goal = [0, -tau / 8, 0, -3*tau / 8, 0, tau / 4, tau / 8]
         print("Goal joint state", joint_goal)
         # The go command can be called with joint values, poses, or without any
         # parameters if you have already set the pose or joint target for the group
@@ -277,10 +283,7 @@ class MoveitPython(object):
         ##
         ## Cartesian Paths
         ## ^^^^^^^^^^^^^^^
-        ## You can plan a Cartesian path directly by specifying a list of waypoints
-        ## for the end-effector to go through. If executing  interactively in a
-        ## Python shell, set scale = 1.0.
-        ##
+        ## You can plan a Caprint(move_client(width=width))
         waypoints = []        # print("============ Startiing Position Move ============")
         # orientation = get_quaternion_from_euler(pi/2,pi/4,pi/2)
         # print("target orientation is", orientation)
@@ -414,7 +417,34 @@ class MoveitPython(object):
         box_pose.pose.orientation.w = 1.0
         box_pose.pose.position.z = 0.16  # above the panda_hand frame
         box_name = "tcp_box"
-        scene.add_box(box_name, box_pose, size=(0.02, 0.08, 0.075))
+        scene.add_box(box_name, box_pose, size=(0.02, 0.09, 0.085))
+
+        ## END_SUB_TUTORIAL
+        # Copy local variables back to class variables. In practice, you should use the class
+        # variables directly unless you have a good reason not to.
+        self.box_name = box_name
+        return self.wait_for_state_update(box_is_known=True, timeout=timeout)
+
+    def add_camera_box(self, timeout=4):
+        # Copy class variables to local variables to make the web tutorials more clear.
+        # In practice, you should use the class variables directly unless you have a good
+        # reason not to.
+        box_name = self.box_name
+        scene = self.scene
+
+        ## BEGIN_SUB_TUTORIAL add_box
+        ##
+        ## Adding Objects to the Planning Scene
+        ## ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        ## First, we will create a box in the planning scene between the fingers:
+        box_pose = geometry_msgs.msg.PoseStamped()
+        box_pose.header.frame_id = "panda_hand"
+        box_pose.pose.orientation.w = 1.0
+        box_pose.pose.position.x = 0.08  # above the panda_hand frame
+        box_pose.pose.position.y = 0.0  # above the panda_hand frame
+        box_pose.pose.position.z = 0.05  # above the panda_hand frame
+        box_name = "camera_box"
+        scene.add_box(box_name, box_pose, size=(0.04, 0.1, 0.1))
 
         ## END_SUB_TUTORIAL
         # Copy local variables back to class variables. In practice, you should use the class
@@ -486,8 +516,8 @@ def grasp_client(width=0.022):
     # Creates a goal to send to the action server.
     goal = franka_gripper.msg.GraspGoal()
     goal.width = width
-    goal.epsilon.inner = 0.005
-    goal.epsilon.outer = 0.005
+    goal.epsilon.inner = 0.008
+    goal.epsilon.outer = 0.008
     goal.speed = 0.1
     goal.force = 5
 
@@ -495,6 +525,28 @@ def grasp_client(width=0.022):
     client.send_goal(goal)
 
     # Waits for the server to finish performing the action.
+    client.wait_for_result()
+
+    # Prints out the result of executing the action
+    return client.get_result()  # A GraspResult
+
+
+def move_client(width=0.022):
+    # Creates the SimpleActionClient, passing the type of the action
+    # (GraspAction) to the constructor.
+    client = actionlib.SimpleActionClient('/franka_gripper/move', franka_gripper.msg.MoveAction)
+
+    # Waits until the action server has started up and started
+    # listening for goals.
+    client.wait_for_server()
+
+    # Creates a goal to send to the action server.
+    goal = franka_gripper.msg.MoveGoal()
+    goal.width = width
+    goal.speed = 0.1
+
+    # Sends the goal to the action server.
+    client.send_goal(goal)
     client.wait_for_result()
 
     # Prints out the result of executing the action
@@ -517,50 +569,96 @@ def main():
 
     try:
         move = MoveitPython()
-        print("============ Default state ============")
+        rospy.sleep(1)
+        #print("============ Default state ============")
         move.add_tcp_box()
-
+        move.add_camera_box()
         move.attach_box()
-        time.sleep(1)
-        input("plan ok enter enter")
-        grasp_client(width=0.08)
-        move.go_to_joint_state()
-        #grasp_client()
-
-        input("plan ok enter enter")
-        #move.add_jenga_box()
-        #move.go_to_near_back_state()
-        orientation = get_quaternion_from_euler(pi/2,pi/2,pi/2)
-        position = [0,-0.5, 0.3]
-        move.go_to_pose_goal(orientation, position)
-        input("plan ok enter enter")
-        cartesian_move = [0.1,0.0,0]
-        cartesian_plan, fraction = move.plan_cartesian_path(cartesian_move)
-        move.display_trajectory(cartesian_plan)
 
 
+        while True:
+            command=input("\ncommand:")
+            if command=="init":
+                move_client()
+                move_client(0.08)
+                move.go_to_default()
+            if command=="init2":
+                move.go_to_joint_state()
+            elif command=="goal":
+                ans=input("orientation_euler:").split(' ')
+                orientation = get_quaternion_from_euler(float(ans[0]), float(ans[1]), float(ans[2]))
+                ans=input("position:")
+                position = [float(ans.split(' ')[i]) for i in range(3)]
+                move.go_to_pose_goal(orientation, position)
+            elif command == "cartesian":
+                ans=input("cartesian move:")
+                cartesian_move = [float(ans.split(' ')[i]) for i in range(3)]
+                cartesian_plan, fraction = move.plan_cartesian_path(cartesian_move)
+                move.display_trajectory(cartesian_plan)
+                if input("plan ok enter enter")=='q':
+                    print("quit")
+                    continue
+                move.execute_plan(cartesian_plan)
+            elif command=="grasp":
+                width = float(input("grasp width:"))
+                print(grasp_client(width=width))
+            elif command=="move":
+                width = float(input("move width:"))
+                print(move_client(width=width))
 
-        input("plan ok enter enter")
-        move.execute_plan(cartesian_plan)
+
+            elif command=="back":
+                move.go_to_back_state()
+            elif command=="right":
+                move.go_to_right_state()
+
+
+
+            elif command=="cue_test":
+                move.execute_plan(move.plan_cartesian_path([0.11,0,0])[0])
+                time.sleep(1)
+                grasp_client(0.072)
+                time.sleep(1)
+                move.execute_plan(move.plan_cartesian_path([-0.11,0,0])[0])
+                time.sleep(1)
+                move_client(0.08)
+                time.sleep(1)
+                move.execute_plan(move.plan_cartesian_path([0,0,0.015])[0])
+                time.sleep(1)
+                move_client(0)
+                time.sleep(1)
+                move.execute_plan(move.plan_cartesian_path([0.085,0,0])[0])
+                time.sleep(1)
+                move.execute_plan(move.plan_cartesian_path([-0.085,0,0])[0])
+                time.sleep(1)
+                move_client(0.08)
+
+
+            else:
+                print("command error")
+        #move.go_to_joint_state()
+
+
         #
         #move.display_trajectory(plan)
         #move.execute_plan(plan)
 
 
         #move.go_to_near_back_state()
-        input("plan ok enter enter")
-        move.go_to_default()
-        grasp_client(width=0.02)
-        move.go_to_near_x_state()
+        # input("plan ok enter enter")
+        # move.go_to_default()
+        # input("plan ok enter enter")
+        # grasp_client(width=0.04)
+        # move.go_to_near_x_state()
         # cartesian_move = [0,-0.1,0]
 
         # cartesian_plan, fraction = move.plan_cartesian_path(cartesian_move)
         # move.display_trajectory(cartesian_plan)
         # move.execute_plan(cartesian_plan)
-        input("plan ok enter enter")
-        move.go_to_default()
-        input("plan ok enter enter")
-        grasp_client(width=0.08)
+        # input("plan ok enter enter")
+        # move.go_to_default()
+        # input("plan ok enter enter")
+        # grasp_client(width=0.08)
         #move.go_to_near_back_state()
 
         # orientation = get_quaternion_from_euler(0,pi/2,-pi/2)
