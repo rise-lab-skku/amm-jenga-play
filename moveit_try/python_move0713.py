@@ -159,9 +159,10 @@ class MoveitPython(object):
     def go_to_right_state(self):
 
         move_group = self.move_group
-
+        current_joints = move_group.get_current_joint_values()
+        print("Current joint state", current_joints)
         #print("Current joint state", joint_goal)
-        joint_goal = [-0.8380633746317598, 0.39385471239977904, 0.8367446307415982, -2.5353422721452823, -1.7074258155910929, 1.3142604798060638, 0.42470801205075626]
+        joint_goal = [-0.9619488684486639, 0.37601890442697067, 0.7208060188668395, -2.5105991162875703, -1.914548356465492, 1.4455920261018111, 0.38271706531021477]
         print("Goal joint state", joint_goal)
         move_group.go(joint_goal, wait=True)
 
@@ -182,7 +183,7 @@ class MoveitPython(object):
 
         joint_goal = move_group.get_current_joint_values()
         print("Current joint state", joint_goal)
-        joint_goal = [-0.23087391448377106, -1.511650887916351, -1.8861559371635541, -2.6021844915019354, -0.02423753989194697, 2.3635854590535486, 2.055037902733283]
+        joint_goal = [0.3639053683740504, -1.5131076359861795, -1.7882048703099263, -2.5923501318439865, 0.5673233514144972, 2.900594508716167, 1.6204754988038523]
         print("Goal joint state", joint_goal)
         # The go command can be called with joint values, poses, or without any
         # parameters if you have already set the pose or joint target for the group
@@ -424,7 +425,7 @@ class MoveitPython(object):
         # variables directly unless you have a good reason not to.
         self.box_name = box_name
         return self.wait_for_state_update(box_is_known=True, timeout=timeout)
-    
+
     def add_tcp_box(self, timeout=4):
         # Copy class variables to local variables to make the web tutorials more clear.
         # In practice, you should use the class variables directly unless you have a good
@@ -449,7 +450,7 @@ class MoveitPython(object):
         # variables directly unless you have a good reason not to.
         self.box_name = box_name
         return self.wait_for_state_update(box_is_known=True, timeout=timeout)
-    
+
     def add_jenga_box(self, timeout=4):
         # Copy class variables to local variables to make the web tutorials more clear.
         # In practice, you should use the class variables directly unless you have a good
@@ -469,7 +470,7 @@ class MoveitPython(object):
         box_pose.pose.position.y = -0.4  # above the panda_hand frame
         box_pose.pose.position.z = 0.2  # above the panda_hand frame
         box_name = "jenga_box"
-        scene.add_box(box_name, box_pose, size=(0.1, 0.1, 0.4))
+        scene.add_box(box_name, box_pose, size=(0.05, 0.05, 0.4))
 
         ## END_SUB_TUTORIAL
         # Copy local variables back to class variables. In practice, you should use the class
@@ -576,7 +577,7 @@ class MoveitPython(object):
         return self.wait_for_state_update(
             box_is_attached=False, box_is_known=False, timeout=timeout
         )
-        
+
 
 def grasp_client(width=0.022):
     # Creates the SimpleActionClient, passing the type of the action
@@ -642,7 +643,7 @@ def get_quaternion_from_euler(roll, pitch, yaw):
 def main():
     try:
         move = MoveitPython()
-        
+
         os.system("python3 "+os.path.dirname(__file__)+"/jenga_obstacle_environment.py")
         rospy.sleep(1)
         #print("============ Default state ============")
@@ -650,8 +651,9 @@ def main():
         move.add_tcp_box()
         move.attach_camera_box()
         move.attach_tcp_box()
-        
-        move.add_jenga_box()
+
+        #move.add_jenga_box()
+        rospy.sleep(1)
 
         while True:
             command=input("\ncommand:")
@@ -684,7 +686,6 @@ def main():
                 width = float(input("move width:"))
                 print(move_client(width=width))
 
-
             elif command=="back":
                 move.go_to_back_state()
             elif command=="right":
@@ -693,63 +694,67 @@ def main():
 
 
             elif command=="cue_test":
+                time.sleep(1)
                 move.go_to_joint_state()
+                time.sleep(1)
                 move.go_to_back_state()
                 move.remove_box()
                 time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([0.11,0,0])[0])
                 time.sleep(1)
-                #grasp_client(0.072)
+                grasp_client(0.072)
                 time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([-0.11,0,0])[0])
                 time.sleep(1)
-                
-                #move_client(0.08)
+
+                move_client(0.08)
                 time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([0,0,0.015])[0])
                 time.sleep(1)
-                #move_client(0)
+                move_client(0)
                 time.sleep(1)
-                
+
                 move.execute_plan(move.plan_cartesian_path([0.085,0,0])[0])
                 time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([-0.085,0,0])[0])
                 time.sleep(1)
-                #move_client(0.08)
-                
+                move_client(0.08)
+
                 move.add_jenga_box()
                 time.sleep(1)
-                
-                
+
+                rospy.sleep(1)
                 move.go_to_right_state()
+                rospy.sleep(1)
                 time.sleep(1)
-                
+
                 move.remove_box()
-                
+                rospy.sleep(1)
+
                 move.execute_plan(move.plan_cartesian_path([0,0,0.015])[0])
                 move.execute_plan(move.plan_cartesian_path([0,-0.11,0])[0])
                 time.sleep(1)
-                #grasp_client(0.072)
+                grasp_client(0.072)
                 time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([0,0.11,0,0])[0])
                 time.sleep(1)
-                
-                #move_client(0.08)
+
+                move_client(0.08)
                 time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([0,0,0.015])[0])
                 time.sleep(1)
-                #move_client(0)
+                move_client(0)
                 time.sleep(1)
-                
+
                 move.execute_plan(move.plan_cartesian_path([0,-0.085,0])[0])
                 time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([0,0.085,0,0])[0])
                 time.sleep(1)
-                #move_client(0.08)
-                
+                move_client(0.08)
+
                 move.add_jenga_box()
                 move.go_to_default()
-                
+
             else:
                 print("command error")
         #move.go_to_joint_state()
@@ -855,4 +860,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
