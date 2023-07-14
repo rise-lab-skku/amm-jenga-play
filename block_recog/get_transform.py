@@ -44,7 +44,9 @@ def calculate_transform_matrix(request):
     
     # temp intrinsic matrix
     intrinsic = o3d.camera.PinholeCameraIntrinsic()
-    intrinsic.intrinsic_matrix = [[971.179, 0, 1025.07],[0, 970.984, 778.291],[0, 0, 1]]
+    intrinsic.intrinsic_matrix = [[968.813, 0, 1023.83],
+                              [0, 968.635, 775.975],
+                              [0, 0, 1]]
     
     masked_depth = cv2.bitwise_and(img_depth, img_depth, mask = tower_mask)
     tower_pcd = get_pointcloud_from_color_depth(color_image=tower_color, depth_image=masked_depth, intrinsic=intrinsic)
@@ -62,7 +64,7 @@ def calculate_transform_matrix(request):
             pcd = get_pointcloud_from_color_depth(color_image=masked_block_rgb, depth_image=masked_block_depth, intrinsic=intrinsic)
             
             # Remove Outlier Points
-            pcd, _ = pcd.remove_radius_outlier(512, 0.0001)
+            pcd, _ = pcd.remove_radius_outlier(1024, 0.025)
             blocks_pcd.append(pcd)
             all_pcd.append(pcd)
             

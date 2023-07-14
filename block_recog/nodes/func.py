@@ -130,7 +130,7 @@ def get_pointcloud_from_color_depth(color_image, depth_image, intrinsic):
     elif isinstance(depth_image, np.ndarray):
         depth_image = o3d.geometry.Image(depth_image)
         
-    rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(color_image, depth_image, depth_scale=1000, convert_rgb_to_intensity=False)
+    rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(color_image, depth_image)
     pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd_image, intrinsic)
     
     return pcd
@@ -189,26 +189,3 @@ def transform_blocks(pcd, icp_transform, resize, move):
     pcd_temp.transform(icp_transform)
     
     return pcd_temp
-
-def mesh_coord_to_cam_coord(point, transform_matrix, resize, move):
-    point = np.array(point)
-    new_point = np.append(point, 1)
-    trans_inv = np.linalg.inv(transform_matrix)
-    new_point = np.inner(np.linalg.inv(trans_inv), new_point)[:3]
-    new_point = new_point - move
-    new_point = new_point / resize
-    new_point = np.append(new_point, 1)
-    new_point = np.inner(np.linalg.inv(np.asarray([[0, 0, -1, 0],
-                                                   [1, 0, 0, 0],
-                                                   [0, -1, 0, 0],
-                                                   [0, 0, 0, 1]])), new_point)[:3]
-    return new_point
-
-def cam_coord_to_world_coord(point, extrinsic):
-    point = np.array(point)
-    extrinsic = np.array()
-    extrinsic_inv = np.linalg.inv(extrinsic)
-    new_point = np.append(point, 1)
-    new_point = np.inner(new_point, extrinsic_inv)[:3]
-    
-    return new_point
