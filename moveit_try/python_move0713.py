@@ -466,7 +466,7 @@ class MoveitPython(object):
         box_pose.pose.position.y = -0.4  # above the panda_hand frame
         box_pose.pose.position.z = 0.2  # above the panda_hand frame
         box_name = "jenga_box"
-        
+
         scene.add_box(box_name, box_pose, size=(0.1, 0.1, 0.4))
 
         ## END_SUB_TUTORIAL
@@ -655,8 +655,8 @@ def main():
         while True:
             command=input("\ncommand:")
             if command=="init":
-                #move_client()
-                #move_client(0.08)
+                move_client()
+                move_client(0.08)
                 move.go_to_default()
             if command=="init2":
                 move.go_to_joint_state()
@@ -699,23 +699,23 @@ def main():
                 time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([0.11,0,0])[0])
                 time.sleep(1)
-                #grasp_client(0.072)
+                grasp_client(0.072)
                 time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([-0.11,0,0])[0])
                 time.sleep(1)
 
-                #move_client(0.08)
+                move_client(0.08)
                 time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([0,0,0.015])[0])
                 time.sleep(1)
-                #move_client(0)
+                move_client(0)
                 time.sleep(1)
 
                 move.execute_plan(move.plan_cartesian_path([0.085,0,0])[0])
                 time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([-0.085,0,0])[0])
                 time.sleep(1)
-                #move_client(0.08)
+                move_client(0.08)
 
                 move.add_jenga_box()
                 time.sleep(1)
@@ -731,23 +731,23 @@ def main():
                 move.execute_plan(move.plan_cartesian_path([0,0,0.015])[0])
                 move.execute_plan(move.plan_cartesian_path([0,-0.11,0])[0])
                 time.sleep(1)
-                #grasp_client(0.072)
+                grasp_client(0.072)
                 time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([0,0.11,0,0])[0])
                 time.sleep(1)
 
-                #move_client(0.08)
+                move_client(0.08)
                 time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([0,0,0.015])[0])
                 time.sleep(1)
-                #move_client(0)
+                move_client(0)
                 time.sleep(1)
 
                 move.execute_plan(move.plan_cartesian_path([0,-0.085,0])[0])
                 time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([0,0.085,0,0])[0])
                 time.sleep(1)
-                #move_client(0.08)
+                move_client(0.08)
 
                 move.add_jenga_box()
                 move.go_to_default()
