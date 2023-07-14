@@ -27,8 +27,8 @@ def image_callback2(msg):
     img_depth = bridge.imgmsg_to_cv2(msg, desired_encoding='16UC1')
     
     ## Save pickle
-    with open('rgb.p', 'wb') as rgb:
-        pickle.dump(img_depth, rgb)
+    with open('dep.p', 'wb') as dep:
+        pickle.dump(img_depth, dep)
 
 
 def main():
