@@ -17,7 +17,6 @@ bridge = CvBridge()
 def image_callback1(msg):
     # Convert ROS images to OpenCV format
     img_color = bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-    img_depth = bridge.imgmsg_to_cv2(msg, desired_encoding='16UC1')
     
     ## Save pickle
     with open('rgb.p', 'wb') as rgb:
