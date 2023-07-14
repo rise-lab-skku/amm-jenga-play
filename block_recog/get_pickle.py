@@ -34,8 +34,8 @@ def image_callback2(msg):
 
 def main():
     rospy.init_node('image_processing_node')
-    rospy.Subscriber('/rgb/image_raw', Image, image_callback)
-    rospy.Subscriber('/depth_to_rgb/image_raw', Image, image_callback)
+    rospy.Subscriber('/rgb/image_raw', Image, image_callback1)
+    rospy.Subscriber('/depth_to_rgb/image_raw', Image, image_callback2)
     rospy.spin()
 
 if __name__ == '__main__':
