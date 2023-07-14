@@ -258,7 +258,24 @@ class MoveitPython(object):
         print("Goal joint state", joint_goal)
         # The go command can be called with joint values, poses, or without any
         # parameters if you have already set the pose or joint target for the group
-        move_group.go(joint_goal, wait=True)
+        # move_group.go(joint_goal, wait=True)
+
+        # The fallowing codes are same with move_group.go()
+        # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        #   - success flag : boolean
+        #   - trajectory message : RobotTrajectory
+        #   - planning time : float
+        #   - error code : MoveitErrorCodes
+        is_success, traj, planning_time, error_code = move_group.plan(joints=joint_goal)
+        _msg = "success" if is_success else "failed"
+        rospy.loginfo(f"Planning is [ {_msg} ] (error code : {error_code.val}, planning time : {planning_time:.2f}s)")
+        print(traj)
+        self.display_trajectory(traj)
+
+        input("\nWait for any key to execute the plan...")
+        if is_success:
+            rospy.loginfo("Executing the plan")
+            move_group.execute(traj, wait=True)
 
         # Calling ``stop()`` ensures that there is no residual movement
         move_group.stop()
@@ -267,7 +284,6 @@ class MoveitPython(object):
         # For testing:
         current_joints = move_group.get_current_joint_values()
         return all_close(joint_goal, current_joints, 0.01)
-
 
     def plan_cartesian_path(self, cartesian_move):
         # Copy class variables to local variables to make the web tutorials more clear.
@@ -642,7 +658,7 @@ def main():
         move = MoveitPython()
 
         os.system("python3 "+os.path.dirname(__file__)+"/jenga_obstacle_environment.py")
-        rospy.sleep(1)
+        #rospy.sleep(1)
         #print("============ Default state ============")
         move.add_camera_box()
         move.add_tcp_box()
@@ -650,13 +666,13 @@ def main():
         move.attach_tcp_box()
 
         move.add_jenga_box()
-        rospy.sleep(1)
+        #rospy.sleep(1)
 
         while True:
             command=input("\ncommand:")
             if command=="init":
-                move_client()
-                move_client(0.08)
+                # move_client()
+                # move_client(0.08)
                 move.go_to_default()
             if command=="init2":
                 move.go_to_joint_state()
@@ -672,6 +688,7 @@ def main():
                 cartesian_plan, fraction = move.plan_cartesian_path(cartesian_move)
                 print(type(cartesian_plan))
                 move.display_trajectory(cartesian_plan)
+                print(cartesian_plan)
                 if input("plan ok enter enter")=='q':
                     print("quit")
                     continue
