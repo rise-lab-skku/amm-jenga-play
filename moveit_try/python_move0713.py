@@ -157,12 +157,11 @@ class MoveitPython(object):
         return all_close(joint_goal, current_joints, 0.01)
 
     def go_to_right_state(self):
+        #0 1.57 -1.57
 
         move_group = self.move_group
-        current_joints = move_group.get_current_joint_values()
-        print("Current joint state", current_joints)
         #print("Current joint state", joint_goal)
-        joint_goal = [-0.9619488684486639, 0.37601890442697067, 0.7208060188668395, -2.5105991162875703, -1.914548356465492, 1.4455920261018111, 0.38271706531021477]
+        joint_goal = [0.5611293987792928, 0.312003711222548, -0.5596735913640407, -2.5328420178990867, -1.4947472261630055, 1.7174246937752704, 0.43659101067739503]
         print("Goal joint state", joint_goal)
         move_group.go(joint_goal, wait=True)
 
@@ -180,10 +179,7 @@ class MoveitPython(object):
 
     def go_to_back_state(self):
         move_group = self.move_group
-
-        joint_goal = move_group.get_current_joint_values()
-        print("Current joint state", joint_goal)
-        joint_goal = [0.3639053683740504, -1.5131076359861795, -1.7882048703099263, -2.5923501318439865, 0.5673233514144972, 2.900594508716167, 1.6204754988038523]
+        joint_goal = [-2.8973, 0.9402260537665736, 1.297409641284462, -2.574743620001275, 1.047775540307437, 2.3515741104816876, 1.3134283465207106]
         print("Goal joint state", joint_goal)
         # The go command can be called with joint values, poses, or without any
         # parameters if you have already set the pose or joint target for the group
@@ -470,7 +466,8 @@ class MoveitPython(object):
         box_pose.pose.position.y = -0.4  # above the panda_hand frame
         box_pose.pose.position.z = 0.2  # above the panda_hand frame
         box_name = "jenga_box"
-        scene.add_box(box_name, box_pose, size=(0.05, 0.05, 0.4))
+        
+        scene.add_box(box_name, box_pose, size=(0.1, 0.1, 0.4))
 
         ## END_SUB_TUTORIAL
         # Copy local variables back to class variables. In practice, you should use the class
@@ -652,7 +649,7 @@ def main():
         move.attach_camera_box()
         move.attach_tcp_box()
 
-        #move.add_jenga_box()
+        move.add_jenga_box()
         rospy.sleep(1)
 
         while True:
@@ -702,55 +699,55 @@ def main():
                 time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([0.11,0,0])[0])
                 time.sleep(1)
-                grasp_client(0.072)
+                #grasp_client(0.072)
                 time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([-0.11,0,0])[0])
                 time.sleep(1)
 
-                move_client(0.08)
+                #move_client(0.08)
                 time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([0,0,0.015])[0])
                 time.sleep(1)
-                move_client(0)
+                #move_client(0)
                 time.sleep(1)
 
                 move.execute_plan(move.plan_cartesian_path([0.085,0,0])[0])
                 time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([-0.085,0,0])[0])
                 time.sleep(1)
-                move_client(0.08)
+                #move_client(0.08)
 
                 move.add_jenga_box()
                 time.sleep(1)
 
-                rospy.sleep(1)
+
                 move.go_to_right_state()
-                rospy.sleep(1)
+
                 time.sleep(1)
 
                 move.remove_box()
-                rospy.sleep(1)
+
 
                 move.execute_plan(move.plan_cartesian_path([0,0,0.015])[0])
                 move.execute_plan(move.plan_cartesian_path([0,-0.11,0])[0])
                 time.sleep(1)
-                grasp_client(0.072)
+                #grasp_client(0.072)
                 time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([0,0.11,0,0])[0])
                 time.sleep(1)
 
-                move_client(0.08)
+                #move_client(0.08)
                 time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([0,0,0.015])[0])
                 time.sleep(1)
-                move_client(0)
+                #move_client(0)
                 time.sleep(1)
 
                 move.execute_plan(move.plan_cartesian_path([0,-0.085,0])[0])
                 time.sleep(1)
                 move.execute_plan(move.plan_cartesian_path([0,0.085,0,0])[0])
                 time.sleep(1)
-                move_client(0.08)
+                #move_client(0.08)
 
                 move.add_jenga_box()
                 move.go_to_default()
