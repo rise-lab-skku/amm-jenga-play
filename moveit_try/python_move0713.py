@@ -640,6 +640,7 @@ def move_client(width=0.022):
     # Prints out the result of executing the action
     return client.get_result()  # A GraspResult
 
+
 def get_quaternion_from_euler(roll, pitch, yaw):
 
     qx = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
@@ -653,6 +654,48 @@ def get_quaternion_from_euler(roll, pitch, yaw):
     qw /= norm
     return [qx, qy, qz, qw]
 
+from copy import deepcopy as dcp
+import trajectory_msgs.msg
+
+def manual_move(dt, moveit_class):
+    joint_states = moveit_class.move_group.get_current_joint_values()
+    print(joint_states)
+    traj = moveit_msgs.msg.RobotTrajectory()
+    points = traj.joint_trajectory.points
+    traj.joint_trajectory.joint_names = [f"panda_joint{i+1}" for i in range(7)]
+    traj.joint_trajectory.header.frame_id = "panda_link0"
+    pt = trajectory_msgs.msg.JointTrajectoryPoint()
+    pt.positions = list(dcp(joint_states))
+    pt.velocities = [0.0] * 7
+    pt.accelerations = [0.0] * 7
+    pt.time_from_start = rospy.Duration(0.0)
+    points.append(dcp(pt))
+    print("current position:", pt.positions)
+
+    for _ in range(2):
+        print(f"\nReceiving information of the {len(points)}-th point...")
+        #pt.positions = list(map(lambda x: np.deg2rad(float(x)), input("Enter the point's positions:").split(' ')))
+        #if pt.positions[0] > 17:
+        #    break
+        pt.positions=[]
+        pt.accelerations=[]
+        pt.velocities = list(map(lambda x: np.deg2rad(float(x)), input("Enter the point's velocities:").split(' ')))
+        #pt.accelerations = list(map(lambda x: np.deg2rad(float(x)), input("Enter the point's accelerations:").split(' ')))
+        pt.time_from_start += rospy.Duration(dt)
+        points.append(dcp(pt))
+
+    print(traj)
+    input("press any to continue")
+    moveit_class.display_trajectory(traj)
+    if bool(input("confirm?")):
+        return moveit_class.move_group.execute(traj)
+    else:
+        return False
+
+
+
+
+
 def main():
     try:
         move = MoveitPython()
@@ -660,10 +703,10 @@ def main():
         os.system("python3 "+os.path.dirname(__file__)+"/jenga_obstacle_environment.py")
         #rospy.sleep(1)
         #print("============ Default state ============")
-        move.add_camera_box()
-        move.add_tcp_box()
-        move.attach_camera_box()
-        move.attach_tcp_box()
+        #move.add_camera_box()
+        #move.add_tcp_box()
+        #move.attach_camera_box()
+        #move.attach_tcp_box()
 
         move.add_jenga_box()
         #rospy.sleep(1)
@@ -671,8 +714,8 @@ def main():
         while True:
             command=input("\ncommand:")
             if command=="init":
-                # move_client()
-                # move_client(0.08)
+                move_client()
+                move_client(0.08)
                 move.go_to_default()
             if command=="init2":
                 move.go_to_joint_state()
@@ -705,7 +748,8 @@ def main():
             elif command=="right":
                 move.go_to_right_state()
 
-
+            elif command=="manual":
+                print(manual_move(float(input("dt:")), move))
 
             elif command=="cue_test":
                 time.sleep(1)
