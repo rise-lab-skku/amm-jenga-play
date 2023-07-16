@@ -27,13 +27,19 @@ Jenga play with Franka Reasearch 3 [SKKU 2023 URP Team2's Project]
 ### Get Point Cloud of Jenga Tower / Blocks
 | Tower Point Cloud | Block Point Cloud  |
 | :-: | :-: |
-| <img src="./imgs/tower_pcd.png" width="400"> | <img src="./imgs/block_pcd.png" width="400"> |
+| <img src="./imgs/pcd_tower_before_outlier.png" width="400"> | <img src="./imgs/single_block_pcd.png" width="400"> |
 
-### Iterative Closest Point Registration
+### Iterative Closest Point Registration (Camera Coordinate System to Mesh Coordinate System)
 | Source Point Cloud (Outlier Removed) | Target Point Cloud  |
 | :-: | :-: |
-| <img src="./imgs/jenga_tower_pcd.png" width="400"> | <img src="./imgs/target_pcd.png" width="400"> |
+| <img src="./imgs/pcd_tower.png" width="400"> | <img src="./imgs/target_pcd.png" width="400"> |
 
 | Before ICP | After ICP  |
 | :-: | :-: |
-| <img src="./imgs/before_icp.png" width="400"> | <img src="./imgs/after_icp.png" width="400"> |
+| <img src="./imgs/before_icp2.png" width="400"> | <img src="./imgs/after_icp.png" width="400"> |
+
+### Get Block Coordinate and Target Coordinate (Mesh Coordinate System)
+| Source Point Cloud (Outlier Removed) | Target Point Cloud  |
+| :-: | :-: |
+| <img src="./imgs/block_pcd_center_target.png" width="400"> | <img src="./imgs/tower_pcd_target.png" width="400"> |
+Estimated Block Center Point (Red) and TCP Target Point (Blue)
