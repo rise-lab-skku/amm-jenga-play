@@ -11,8 +11,10 @@ initial_transform = np.asarray([[0, 0, -1, 0],
                                     [0, -1, 0, 0],
                                     [0, 0, 0, 1]])
 
-def img_masking(img_hsv, img_color, color):
+def img_masking(img_color, color):
     
+    img_hsv = cv2.cvtColor(img_color, cv2.COLOR_BGR2HSV)
+
     # RED
     lower_red1 = np.array([0, 130, 50])
     upper_red1 = np.array([15, 255, 255])
@@ -38,7 +40,7 @@ def img_masking(img_hsv, img_color, color):
     upper_blue = (100+9, 255, 255)
 
     # VIOLET
-    lower_violet = (130-20, 50, 30)
+    lower_violet = (130-20, 60, 60)
     upper_violet = (130+20, 255, 255)
     
     if color == 'pink' or color =='red':
@@ -106,7 +108,7 @@ def img_masking(img_hsv, img_color, color):
         block_color = cv2.bitwise_and(img_color, img_color, mask = block_mask)
         
         # 노이즈 제거
-        if area < 600:
+        if area < 700:
             continue
         
         
@@ -143,49 +145,143 @@ def combine_pcd(all_pcd):
     return pcd_combined
 
 def prepare_icp(source, target):
-    
     source_tmp = copy.deepcopy(source)
     target_tmp = copy.deepcopy(target)
     
-    # make the point cloud into right position
-    source_tmp.transform(initial_transform)
-    
-    # resize the target pointcloud to make two pointclouds into same scale
-    resize = (np.array(target_tmp.points)[:,2].max() - np.array(target_tmp.points)[:,2].min()) / (np.array(source_tmp.points)[:,2].max() - np.array(source_tmp.points)[:,2].min())
-    
     # move the source pcd to do icp
-    move = np.array(target_tmp.get_center() - source_tmp.get_center()*resize)
-    
-    # a = o3d.cpu.pybind.utility.Vector3dVector(np.array(target_tmp.points))
-    b = o3d.cpu.pybind.utility.Vector3dVector(np.array(source_tmp.points)*resize + move)
-    
-    # target_tmp.points = a
-    source_tmp.points = b
-    
-    return source_tmp, target_tmp, resize, move
+    move = np.array(target_tmp.get_center() - source_tmp.get_center())
+        
+    return source_tmp, target_tmp, move
 
-def do_ICP(source, target, threshold):
-    trans_init = np.asarray([[1, 0, 0, 0],
-                             [0, 1, 0, 0],
-                             [0, 0, 1, 0],
-                             [0, 0, 0, 1]])
+def do_ICP(source, target, trans_init):
     
     # evaluation = o3d.pipelines.registration.evaluate_registration(source, target, threshold, trans_init)
     
     reg_p2p = o3d.pipelines.registration.registration_icp(
-    source, target, threshold, trans_init,
+    source, target, 10, trans_init,
     o3d.pipelines.registration.TransformationEstimationPointToPoint(),
-    o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=20000))
+    o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=2000))
     
     transform_matrix = reg_p2p.transformation
     
     return transform_matrix
 
-def transform_blocks(pcd, icp_transform, resize, move):
+def transform_blocks(pcd, icp_transform):
     pcd_temp = copy.deepcopy(pcd)
-    pcd_temp.transform(initial_transform)
-    aa = o3d.cpu.pybind.utility.Vector3dVector(np.array(pcd_temp.points)*resize + move)
-    pcd_temp.points = aa
+
     pcd_temp.transform(icp_transform)
     
     return pcd_temp
+
+
+def get_coordinate(target_block, blocks_pcd_by_color, trans):
+    target_block_color, target_block_label = target_block.split()
+    colors = ['green', 'pink', 'yellow', 'blue', 'violet', 'red']
+    
+    for col, pcds in zip(colors, blocks_pcd_by_color):
+        if col != target_block_color:
+            continue
+        for idx, pcd in enumerate(pcds):
+            if idx != int(target_block_label):
+                continue
+        
+            pcd_new = transform_blocks(pcd, trans)
+
+            
+            box_extent = pcd_new.get_axis_aligned_bounding_box().get_extent()
+            # print("BOX EXTENT : ", box_extent)
+            
+            center_coordinate = np.array(pcd_new.get_axis_aligned_bounding_box().get_box_points()).mean(axis=0)
+            
+            # print("BOX CENTER COORDINATE : ", center_coordinate)
+            
+            # print("BOX MAX X,Y and MEAN Z Coordinate")
+            x_mean = np.array(pcd_new.get_axis_aligned_bounding_box().get_box_points())[:,0].mean()
+            y_mean = np.array(pcd_new.get_axis_aligned_bounding_box().get_box_points())[:,1].mean()
+            z_mean = np.array(pcd_new.get_axis_aligned_bounding_box().get_box_points())[:,2].mean()
+            
+            if box_extent[1] > 70:
+                print("PULL DIRECTION : X")
+                vector = np.array([-1, 0, 0])
+
+                cen_x = x_mean #- 25/2
+                cen_y = y_mean #- 75/2
+                cen_z = z_mean
+                
+                target_x = cen_x + 150
+                target_y = cen_y
+                target_z = cen_z
+                
+            elif box_extent[0] > 70:
+                print("PULL DIRECTION : Y")
+                vector = np.array([0, -1, 0])
+
+                cen_x = x_mean# - 75/2
+                cen_y = y_mean# - 25/2
+                cen_z = z_mean
+                
+                target_x = cen_x
+                target_y = cen_y + 150
+                target_z = cen_z
+                
+            elif abs(center_coordinate[0]) < 10 and box_extent [1] < 15:
+                print("PUSH DIRECTION : Y or -Y")
+                vector = np.array([0, -1, 0])
+
+                cen_x = x_mean# - 25/2
+                cen_y = y_mean - 75/2
+                cen_z = z_mean
+                
+                target_x = cen_x
+                target_y = cen_y + 150
+                target_z = cen_z
+                
+            elif abs(center_coordinate[1]) < 10 and box_extent [0] < 15:
+                print("PUSH DIRECTION : X or -X")
+                vector = np.array([-1, 0, 0])
+
+                cen_x = x_mean - 75/2
+                cen_y = y_mean# - 25/2
+                cen_z = z_mean
+                
+                target_x = cen_x + 150
+                target_y = cen_y
+                target_z = cen_z
+                
+            elif box_extent[1] < 15:
+                print("PULL DIRECTION : -X")
+                vector = np.array([1, 0, 0])
+
+                cen_x = x_mean# - 25/2
+                cen_y = y_mean - 75/2
+                cen_z = z_mean
+                
+                target_x = cen_x - 150
+                target_y = cen_y
+                target_z = cen_z
+                
+            elif box_extent[0] < 15:
+                print("PULL DIRECTION : -Y")
+                vector = np.array([0, 1, 0])
+
+                cen_x = x_mean - 75/2
+                cen_y = y_mean# - 25/2
+                cen_z = z_mean
+                
+                target_x = cen_x
+                target_y = cen_y - 150
+                target_z = cen_z
+                
+            else:
+                print("NOTHING")
+                
+    target_coordinate = np.array([target_x, target_y, target_z])
+    
+    return target_coordinate, vector
+
+def coordinate_transform(coordinate, transform_matrix):
+    coordinate = copy.deepcopy(coordinate)
+    coordinate = np.append(coordinate,1)
+    new_coordinate = np.inner(transform_matrix, coordinate)[:3]
+    
+    return new_coordinate
