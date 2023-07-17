@@ -747,7 +747,7 @@ def main():
                     # vision result
                     target_point = [0.34,-0.34,0.2]
                     temp_point = [0.34,-0.2,0.2]
-                    method = 'push' #true-push fasle-pull
+                    method = True #true-push fasle-pull
                     ###############################################################
                     move.jenga_extract(target_point,temp_point,method)
 
