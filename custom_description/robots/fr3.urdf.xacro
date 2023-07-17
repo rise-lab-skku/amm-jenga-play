@@ -1,0 +1,30 @@
+<?xml version='1.0' encoding='utf-8'?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="fr3">
+    <xacro:include filename="$(find franka_description)/robots/common/franka_robot.xacro"/>
+    <xacro:include filename="$(find custom_description)/robots/custom_hand.xacro"/>
+
+    <xacro:arg name="arm_id" default="fr3"/>
+    <xacro:arg name="tcp_xyz" default="0 0 0.1034"/>
+    <xacro:arg name="tcp_rpy" default="0 0 0"/>
+    <xacro:arg name="tcp2_xyz" default="0 0 0.1974"/>
+    <xacro:arg name="tcp2_rpy" default="0 0 0"/>
+    <xacro:arg name="camera_xyz" default="0 0 0"/>
+    <xacro:arg name="camera_rpy" default="${pi} ${-pi/2} 0"/>
+
+    <xacro:franka_robot
+        arm_id="$(arg arm_id)"
+        joint_limits="${xacro.load_yaml('$(find franka_description)/robots/fr3/joint_limits.yaml')}"
+        hand="false"
+        gazebo="false"
+    />
+
+    <xacro:custom_hand
+        arm_id="$(arg arm_id)"
+        tcp_xyz="$(arg tcp_xyz)"
+        tcp_rpy="$(arg tcp_rpy)"
+        tcp2_xyz="$(arg tcp2_xyz)"
+        tcp2_rpy="$(arg tcp2_rpy)"
+        camera_xyz="$(arg camera_xyz)"
+        camera_rpy="$(arg camera_rpy)"
+    />
+</robot>
