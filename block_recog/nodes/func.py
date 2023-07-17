@@ -197,7 +197,7 @@ def get_coordinate(target_block, blocks_pcd_by_color, trans):
             
             if box_extent[1] > 70:
                 print("PULL DIRECTION : X")
-                vector = np.array([-1, 0, 0])
+                push = False
 
                 cen_x = x_mean #- 25/2
                 cen_y = y_mean #- 75/2
@@ -209,7 +209,7 @@ def get_coordinate(target_block, blocks_pcd_by_color, trans):
                 
             elif box_extent[0] > 70:
                 print("PULL DIRECTION : Y")
-                vector = np.array([0, -1, 0])
+                push = False
 
                 cen_x = x_mean# - 75/2
                 cen_y = y_mean# - 25/2
@@ -221,7 +221,7 @@ def get_coordinate(target_block, blocks_pcd_by_color, trans):
                 
             elif abs(center_coordinate[0]) < 10 and box_extent [1] < 15:
                 print("PUSH DIRECTION : Y or -Y")
-                vector = np.array([0, -1, 0])
+                push = True
 
                 cen_x = x_mean# - 25/2
                 cen_y = y_mean - 75/2
@@ -233,7 +233,7 @@ def get_coordinate(target_block, blocks_pcd_by_color, trans):
                 
             elif abs(center_coordinate[1]) < 10 and box_extent [0] < 15:
                 print("PUSH DIRECTION : X or -X")
-                vector = np.array([-1, 0, 0])
+                push = True
 
                 cen_x = x_mean - 75/2
                 cen_y = y_mean# - 25/2
@@ -245,7 +245,7 @@ def get_coordinate(target_block, blocks_pcd_by_color, trans):
                 
             elif box_extent[1] < 15:
                 print("PULL DIRECTION : -X")
-                vector = np.array([1, 0, 0])
+                push = False
 
                 cen_x = x_mean# - 25/2
                 cen_y = y_mean - 75/2
@@ -257,7 +257,7 @@ def get_coordinate(target_block, blocks_pcd_by_color, trans):
                 
             elif box_extent[0] < 15:
                 print("PULL DIRECTION : -Y")
-                vector = np.array([0, 1, 0])
+                push = False
 
                 cen_x = x_mean - 75/2
                 cen_y = y_mean# - 25/2
@@ -273,7 +273,7 @@ def get_coordinate(target_block, blocks_pcd_by_color, trans):
     center_coordinate = np.array([cen_x, cen_y, cen_z])            
     target_coordinate = np.array([target_x, target_y, target_z])
     
-    return center_coordinate, target_coordinate, vector
+    return center_coordinate, target_coordinate, push
 
 def coordinate_transform(coordinate, transform_matrix):
     coordinate = copy.deepcopy(coordinate)
@@ -281,3 +281,14 @@ def coordinate_transform(coordinate, transform_matrix):
     new_coordinate = np.inner(transform_matrix, coordinate)[:3]
     
     return new_coordinate
+
+
+        
+def transform_mat_from_trans_rot(trans, rot):
+    e1, e2, e3, e4 = rot
+    trans_matrix = np.array([[1-2*(e2**2)-2*(e3**2), 2*(e1*e2-e3*e4), 2*(e1*e3+e2*e4), trans[0]],
+                                [2*(e1*e2+e3*e4), 1-2*(e1**2)-2*(e3**2), 2*(e2*e3-e1*e4), trans[1]],
+                                [2*(e1*e3-e2*e4), 2*(e2*e3+e1*e4), 1-2*(e1**2)-2*(e2**2), trans[2]],
+                                [0, 0, 0, 1]])
+    
+    return trans_matrix
