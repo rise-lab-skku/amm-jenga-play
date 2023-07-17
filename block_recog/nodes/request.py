@@ -109,7 +109,7 @@ if __name__ == '__main__':
             for tran_mat in [mesh_to_camera_matrix, camera_to_hand_matrix]:
                 jenga_transformed_coord.append(jenga_transformed_coord)
         
-        rospy.loginfo("jenga_transformed_coord")        
+        rospy.loginfo(jenga_transformed_coord)        
         rospy.loginfo(jenga_transformed_coord)
         
         for tran_mat in [mesh_to_camera_matrix, camera_to_hand_matrix]:
