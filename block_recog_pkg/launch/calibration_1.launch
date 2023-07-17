@@ -1,0 +1,21 @@
+<launch>
+
+    <node name="service_server_node" pkg="block_recog" type="get_world_coordinate.py" output="screen" />
+
+  <!-- The rpy in the comment uses the extrinsic XYZ convention, which is the same as is used in a URDF. See
+    http://wiki.ros.org/geometry2/RotationMethods and https://en.wikipedia.org/wiki/Euler_angles for more info. -->
+  <!-- xyz="0.072928 0.00391936 0.0550886" rpy="2.90434 1.4808 0.246012" -->
+  <!-- panda_hand to camera_base -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="camera_link_broadcaster"
+   args="0.072928 0.00391936 0.0550886   0.737269 -0.0107036 0.675499 0.00451955 panda_hand camera_base" />
+
+   <node pkg="tf2_ros" type="static_transform_publisher" name="camera_link_broadcaster2"
+   args="0.072928 0.00391936 0.0550886   0.737269 -0.0107036 0.675499 0.00451955 world panda_hand" />
+
+     <!-- Kinect 카메라 불러오기 -->
+  <include file="$(find azure_kinect_ros_driver)/launch/kinect_rgbd.launch">
+    <arg name="overwrite_robot_description" value="false" />
+    <arg name="point_cloud"                 value="true" />
+    <arg name="rgb_point_cloud"             value="true" />
+  </include>
+</launch>
