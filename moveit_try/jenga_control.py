@@ -56,7 +56,7 @@ def get_quaternion_from_euler(roll, pitch, yaw):
     qy /= norm
     qz /= norm
     qw /= norm
-    
+
     return qx, qy, qz, qw
 
 class MoveitPython(object):
@@ -216,7 +216,7 @@ class MoveitPython(object):
         #print(type(pose_goal))
         pose_goal = move_group.set_pose_target(pose_goal, end_effetor)
         #move_group.go(plan, wait=True)
-        
+
         is_success, traj, planning_time, error_code = move_group.plan(joints=pose_goal)
         _msg = "success" if is_success else "failed"
         rospy.loginfo(f"Planning is [ {_msg} ] (error code : {error_code.val}, planning time : {planning_time:.2f}s)")
@@ -239,7 +239,7 @@ class MoveitPython(object):
         current_pose = self.move_group.get_current_pose().pose
         print("Current pose state", current_pose)
         return all_close(pose_goal, current_pose, 0.001)
-    
+
     def two_points_to_rpy(self, target_point, temp_point):
         dx = target_point[0] - temp_point[0]
         dy = target_point[1] - temp_point[1]
@@ -250,7 +250,7 @@ class MoveitPython(object):
         print(direction)
         rpy = [pi/2,pi/2,direction]
         return rpy
-    
+
     def go_to_default(self):
         move_group = self.move_group
 
@@ -411,27 +411,28 @@ class MoveitPython(object):
         # END_SUB_TUTORIAL
 
     def jenga_extract(self, target_point, temp_point, method):
-        
+
         self.change_tcp(method=method)
         time.sleep(1)
         rpy = self.two_points_to_rpy(target_point=target_point,temp_point=temp_point)
         x = temp_point[0] - target_point[0]
         y = temp_point[1] - target_point[1]
         r = sqrt(x **2 + y **2)
-        if method == "grasp":
+        if method is False:# grasp
             self.rpy_goal(rpy=rpy,xyz=target_point)
             print("rpy", rpy)
-            self.grasp_client(0.07)
+            grasp_client(0.07)
             time.sleep(1)
             extract = [0.11*x/r, 0.11* y/r,0]
             self.execute_plan(self.plan_cartesian_path(cartesian_move=extract, avoid_collisions=False)[0])
             time.sleep(1)
-            self.move_client(0.08)
+            move_client(0.08)
             print("grasp extraction complete")
-        elif method == "push":
+
+        elif method is True:# "push"
             self.rpy_goal(rpy=rpy,xyz=temp_point)
             print("rpy", rpy)
-            self.move_client(0)
+            move_client(0)
             time.sleep(1)
             extract = [-0.10*x/r, -0.10* y/r,0]
             self.execute_plan(self.plan_cartesian_path(cartesian_move=extract, avoid_collisions=False)[0])
@@ -439,58 +440,11 @@ class MoveitPython(object):
             extract = [0.11*x/r, 0.11* y/r,0]
             self.execute_plan(self.plan_cartesian_path(cartesian_move=extract, avoid_collisions=False)[0])
             time.sleep(1)
-            self.move_client(0.08)
+            move_client(0.08)
             print("push extraction complete")
         else:
             print("wrong method")
 
-    # gripper control
-    def grasp_client(width=0.022):
-        # Creates the SimpleActionClient, passing the type of the action
-        # (GraspAction) to the constructor.
-        client = actionlib.SimpleActionClient('/franka_gripper/grasp', franka_gripper.msg.GraspAction)
-
-        # Waits until the action server has started up and started
-        # listening for goals.
-        client.wait_for_server()
-
-        # Creates a goal to send to the action server.
-        goal = franka_gripper.msg.GraspGoal()
-        goal.width = width
-        goal.epsilon.inner = 0.007
-        goal.epsilon.outer = 0.0085
-        goal.speed = 0.1
-        goal.force = 5
-
-        # Sends the goal to the action server.
-        client.send_goal(goal)
-
-        # Waits for the server to finish performing the action.
-        client.wait_for_result()
-
-        # Prints out the result of executing the action
-        return client.get_result()  # A GraspResult
-
-    def move_client(width=0.022):
-        # Creates the SimpleActionClient, passing the type of the action
-        # (GraspAction) to the constructor.
-        client = actionlib.SimpleActionClient('/franka_gripper/move', franka_gripper.msg.MoveAction)
-
-        # Waits until the action server has started up and started
-        # listening for goals.
-        client.wait_for_server()
-
-        # Creates a goal to send to the action server.
-        goal = franka_gripper.msg.MoveGoal()
-        goal.width = width
-        goal.speed = 0.1
-
-        # Sends the goal to the action server.
-        client.send_goal(goal)
-        client.wait_for_result()
-
-        # Prints out the result of executing the action
-        return client.get_result()  # A GraspResult
 
     # collsion control
     def add_camera_box(self, timeout=4):
@@ -642,6 +596,54 @@ class MoveitPython(object):
         self.rpy_goal(orientation, position)
         return True
 
+# gripper control
+def grasp_client(width=0.022):
+    # Creates the SimpleActionClient, passing the type of the action
+    # (GraspAction) to the constructor.
+    client = actionlib.SimpleActionClient('/franka_gripper/grasp', franka_gripper.msg.GraspAction)
+
+    # Waits until the action server has started up and started
+    # listening for goals.
+    client.wait_for_server()
+
+    # Creates a goal to send to the action server.
+    goal = franka_gripper.msg.GraspGoal()
+    goal.width = width
+    goal.epsilon.inner = 0.007
+    goal.epsilon.outer = 0.0085
+    goal.speed = 0.1
+    goal.force = 5
+
+    # Sends the goal to the action server.
+    client.send_goal(goal)
+
+    # Waits for the server to finish performing the action.
+    client.wait_for_result()
+
+    # Prints out the result of executing the action
+    return client.get_result()  # A GraspResult
+
+def move_client(width=0.022):
+    # Creates the SimpleActionClient, passing the type of the action
+    # (GraspAction) to the constructor.
+    client = actionlib.SimpleActionClient('/franka_gripper/move', franka_gripper.msg.MoveAction)
+
+    # Waits until the action server has started up and started
+    # listening for goals.
+    client.wait_for_server()
+
+    # Creates a goal to send to the action server.
+    goal = franka_gripper.msg.MoveGoal()
+    goal.width = width
+    goal.speed = 0.1
+
+    # Sends the goal to the action server.
+    client.send_goal(goal)
+    client.wait_for_result()
+
+    # Prints out the result of executing the action
+    return client.get_result()  # A GraspResult
+
 
 
 def main():
@@ -667,8 +669,8 @@ def main():
             #planning and execution functions
             if command=="init":
                 move.go_to_default()
-                #move.move_client()
-                #move.move_client(0.08)
+                move_client()
+                move_client(0.08)
             elif command == "quit":
                 break
             elif command == "change tcp":
@@ -678,7 +680,7 @@ def main():
                 cartesian_move = [float(ans.split(' ')[i]) for i in range(3)]
                 cartesian_plan, fraction = move.plan_cartesian_path(cartesian_move, avoid_collisions=False)
                 move.display_trajectory(cartesian_plan)
-                if input("if the plan is valid press enter to execute or press q to abort")=='q':
+                if input("if the plan is valid press enter to execute or press q to abort") =='q':
                     print("quit")
                     continue
                 move.execute_plan(cartesian_plan)
@@ -693,8 +695,8 @@ def main():
             elif command =="rpy2":
                 rpy = move.two_points_to_rpy(target_point=[0.3,-0.4,0.4],temp_point=[0.6, -0.5,0.21])
                 move.rpy_goal(rpy,[0.3,-0.4,0.4])
-                
-                
+
+
 
             #gripper functions
             elif command=="grasp":
@@ -709,59 +711,51 @@ def main():
                 move.go_to_back_position()
             elif command=="right":
                 move.go_to_right_position()
-                
+
             elif command=="test":
                 #move.move_client(0.08)
                 move.go_to_default()
                 time.sleep(1)
-                
+
                 #camera position
                 move.rpy_goal([pi/2, pi/2, -pi/4],[0.5, -0.2, 0.3])
-                
+
                 ############### take picture and callib ######################
-                
-                
-                
-                
+
+
+
+
                 ###############give me 4 poinst to make jenga################
                 points = [[0.29,-0.31,0],[0.31,-0.39,0],[0.39,-0.37,0],[0.37,-0.29,0]]
                 # give me succeeding points
                 move.add_jenga_box(points)
-                
+
                 while True:
                     command = input("\njenga to extract: ")
                     if command == "q":
                         break
-                    try:
-                        command = command.strip().split()
-                        color = command[0]
-                        num = int(command[1])
-                    except:
-                        continue
-                    print(color, num)
 
-                    
                     ################### get two points and method #################
                     # color = 'green'
                     # num = 5
 
-                    
-                    
-                    
-                    
-                    
+
+
+
+
+
                     # vision result
                     target_point = [0.34,-0.34,0.2]
                     temp_point = [0.34,-0.2,0.2]
-                    method = 'push'
+                    method = 'push' #true-push fasle-pull
                     ###############################################################
                     move.jenga_extract(target_point,temp_point,method)
 
                 time.sleep(1)
                 #move.move_client(0.08)
                 move.go_to_default()
-            
-        
+
+
             else:
                 print("command error")
     except rospy.ROSInterruptException:
