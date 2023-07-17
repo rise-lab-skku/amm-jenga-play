@@ -7,7 +7,7 @@ import moveit_commander
 import moveit_msgs.msg
 import geometry_msgs.msg
 import numpy as np
-from math import pi, tau, dist, fabs, cos, atan
+from math import pi, tau, dist, fabs, cos, atan, sin, sqrt
 from std_msgs.msg import String
 import franka_gripper.msg
 import actionlib
@@ -16,9 +16,6 @@ import time
 from moveit_commander import RobotCommander, PlanningSceneInterface
 from copy import deepcopy as dcp
 import trajectory_msgs.msg
-
-
-
 
 def all_close(goal, actual, tolerance):
     """
@@ -49,8 +46,20 @@ def all_close(goal, actual, tolerance):
 
     return True
 
+def get_quaternion_from_euler(roll, pitch, yaw):
+    qx = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+    qy = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
+    qz = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
+    qw = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+    norm = np.sqrt(qx**2 + qy**2+qz**2+qw**2)
+    qx /= norm
+    qy /= norm
+    qz /= norm
+    qw /= norm
+    
+    return qx, qy, qz, qw
+
 class MoveitPython(object):
-    """MoveitPython"""
     group_name=""
     def __init__(self):
         super(MoveitPython, self).__init__()
@@ -74,7 +83,7 @@ class MoveitPython(object):
         # If you are using a different robot, change this value to the name of your robot
         # arm planning group.
         # This interface can be used to plan and execute motions:
-        #self.group_name = "panda_arm"# to make TCP as Panda_manipulaotor new fingert tip
+        #group_name = "panda_arm" to make TCP as Panda_manipulaotor new fingert tip
         self.group_name = "panda_manipulator2"
         move_group = moveit_commander.MoveGroupCommander(self.group_name)
         #print(dir(move_group))
@@ -130,16 +139,24 @@ class MoveitPython(object):
         self.eef_link = eef_link
         self.group_names = group_names
 
-    def change_tcp(self, group_name):
+    def change_tcp(self, method=None, group_name=None):
         robot = moveit_commander.RobotCommander()
         #print("hello",self.group_name)
-        if group_name is None:
-            if self.group_name == "panda_manipulator2":
-                self.group_name = "panda_manipulator"
+        if method is None:
+            if group_name is None:
+                if self.group_name == "panda_manipulator2":
+                    self.group_name = "panda_manipulator"
+                else:
+                    self.group_name = "panda_manipulator2"
             else:
-                self.group_name = "panda_manipulator2"
+                self.group_name = group_name
+        elif method == "grasp":
+            self.group_name = "panda_manipulator"
+        elif method == "push":
+            self.group_name = "panda_manipulator2"
         else:
-            self.group_name = group_name
+            print("define method correctly")
+            self.group_name = "panda_manipulator2"
 
         move_group = moveit_commander.MoveGroupCommander(self.group_name)
         print(self.group_name)
@@ -223,199 +240,17 @@ class MoveitPython(object):
         print("Current pose state", current_pose)
         return all_close(pose_goal, current_pose, 0.001)
     
-    def two_points_to_pose(self, target_point, temp_point):
+    def two_points_to_rpy(self, target_point, temp_point):
         dx = target_point[0] - temp_point[0]
         dy = target_point[1] - temp_point[1]
-        
-        print(target_point)
-        print(temp_point)
-        print(dx,"helo",dy)
-        direction = atan(dy/dx)
+        if dx <= 0.0001:
+            direction = 0
+        else:
+            direction = atan(dy/dx)-pi/2
         print(direction)
         rpy = [pi/2,pi/2,direction]
-        position = target_point
-        print(rpy)
-        print(position)
-        self.rpy_goal(rpy,position)
-
-    def go_to_right_state_joint(self):
-        #0 1.57 -1.57
-
-        move_group = self.move_group
-
-        # BEGIN_SUB_TUTORIAL plan_to_joint_state
-        #
-        # Planning to a Joint Goal
-        # ^^^^^^^^^^^^^^^^^^^^^^^^
-        # The Panda's zero configuration is at a `singularity <https://www.quora.com/Robotics-What-is-meant-by-kinematic-singularity>`_, so the first
-        # thing we want to do is move it to a slightly better configuration.
-        # We use the constant `tau = 2*pi <https://en.wikipedia.org/wiki/Turn_(angle)#Tau_proposals>`_ for convenience:
-        # We get the joint values from the group and change some of the values:
-        joint_goal = move_group.get_current_joint_values()
-        print("Current joint state", joint_goal)
-        joint_goal = [0.5814248320904081, 0.32849922433280443, -0.5749167443910467, -2.5296883764860967, -1.4873604605443078, 1.7338714269498154, 0.4507797936718414]
-        print("Goal joint state", joint_goal)
-        # The go command can be called with joint values, poses, or without any
-        # parameters if you have already set the pose or joint target for the group
-        #move_group.go(joint_goal, wait=True)
-
-        is_success, traj, planning_time, error_code = move_group.plan(joints=joint_goal)
-        _msg = "success" if is_success else "failed"
-        rospy.loginfo(f"Planning is [ {_msg} ] (error code : {error_code.val}, planning time : {planning_time:.2f}s)")
-        print(traj)
-        self.display_trajectory(traj)
-
-        input("\nWait for any key to execute the plan...")
-        if is_success:
-            rospy.loginfo("Executing the plan")
-            move_group.execute(traj, wait=True)
-
-        # Calling ``stop()`` ensures that there is no residual movement
-        move_group.stop()
-
-        # END_SUB_TUTORIAL
-
-        # For testing:
-        current_joints = move_group.get_current_joint_values()
-        print("hello Current joint state", current_joints)
-        return all_close(joint_goal, current_joints, 0.001)
-
-    def go_to_back_state_joint(self):
-        # Copy class variables to local variables to make the web tutorials more clear.
-        # In practice, you should use the class variables directly unless you have a good
-        # reason not to.
-        move_group = self.move_group
-
-        # BEGIN_SUB_TUTORIAL plan_to_joint_state
-        #
-        # Planning to a Joint Goal
-        # ^^^^^^^^^^^^^^^^^^^^^^^^
-        # The Panda's zero configuration is at a `singularity <https://www.quora.com/Robotics-What-is-meant-by-kinematic-singularity>`_, so the first
-        # thing we want to do is move it to a slightly better configuration.
-        # We use the constant `tau = 2*pi <https://en.wikipedia.org/wiki/Turn_(angle)#Tau_proposals>`_ for convenience:
-        # We get the joint values from the group and change some of the values:
-        joint_goal = move_group.get_current_joint_values()
-        print("Current joint state", joint_goal)
-        joint_goal = [2.2935093896801315, -0.5357224503223105, 2.136197543855244, -2.468391434871596, 1.5131491402571824, 1.0860143871703416, 1.0879037017179407]
-        print("Goal joint state", joint_goal)
-        # The go command can be called with joint values, poses, or without any
-        # parameters if you have already set the pose or joint target for the group
-        #move_group.go(joint_goal, wait=True)
-
-        is_success, traj, planning_time, error_code = move_group.plan(joints=joint_goal)
-        _msg = "success" if is_success else "failed"
-        rospy.loginfo(f"Planning is [ {_msg} ] (error code : {error_code.val}, planning time : {planning_time:.2f}s)")
-        print(traj)
-        self.display_trajectory(traj)
-
-        input("\nWait for any key to execute the plan...")
-        if is_success:
-            rospy.loginfo("Executing the plan")
-            move_group.execute(traj, wait=True)
-
-        # Calling ``stop()`` ensures that there is no residual movement
-        move_group.stop()
-
-        # END_SUB_TUTORIAL
-
-        # For testing:
-        current_joints = move_group.get_current_joint_values()
-        print("hello Current joint state", current_joints)
-        return all_close(joint_goal, current_joints, 0.001)
-
-    def go_to_back_position(self):
-        orientation = get_quaternion_from_euler(1.57, 1.57, 1.57)
-        position = [0.34,-0.4,0.2]
-        self.go_to_pose_goal(orientation, position)
-        return True
-    def go_to_right_position(self):
-        orientation = get_quaternion_from_euler(0, 1.57, -1.57)
-        position = [0.4,-0.34,0.2]
-        self.go_to_pose_goal(orientation, position)
-        return True
-    def go_to_camera_position(self):
-        # Copy class variables to local variables to make the web tutorials more clear.
-        # In practice, you should use the class variables directly unless you have a good
-        # reason not to.
-        move_group = self.move_group
-
-        # BEGIN_SUB_TUTORIAL plan_to_joint_state
-        #
-        # Planning to a Joint Goal
-        # ^^^^^^^^^^^^^^^^^^^^^^^^
-        # The Panda's zero configuration is at a `singularity <https://www.quora.com/Robotics-What-is-meant-by-kinematic-singularity>`_, so the first
-        # thing we want to do is move it to a slightly better configuration.
-        # We use the constant `tau = 2*pi <https://en.wikipedia.org/wiki/Turn_(angle)#Tau_proposals>`_ for convenience:
-        # We get the joint values from the group and change some of the values:
-        joint_goal = move_group.get_current_joint_values()
-        print("Current joint state", joint_goal)
-        joint_goal = [-1.9980749713412709, -1.3835496704440862, 1.6113084969627036, -1.6909211688426125, 0.22785834064266122, 1.6401951051290105, 2.4127905438974997]
-        print("Goal joint state", joint_goal)
-        # The go command can be called with joint values, poses, or without any
-        # parameters if you have already set the pose or joint target for the group
-        #move_group.go(joint_goal, wait=True)
-
-        is_success, traj, planning_time, error_code = move_group.plan(joints=joint_goal)
-        _msg = "success" if is_success else "failed"
-        rospy.loginfo(f"Planning is [ {_msg} ] (error code : {error_code.val}, planning time : {planning_time:.2f}s)")
-        print(traj)
-        self.display_trajectory(traj)
-
-        input("\nWait for any key to execute the plan...")
-        if is_success:
-            rospy.loginfo("Executing the plan")
-            move_group.execute(traj, wait=True)
-
-        # Calling ``stop()`` ensures that there is no residual movement
-        move_group.stop()
-
-        # END_SUB_TUTORIAL
-
-        # For testing:
-        current_joints = move_group.get_current_joint_values()
-        print("hello Current joint state", current_joints)
-        return all_close(joint_goal, current_joints, 0.001)
-    def go_to_pose_goal(self, orientation, position):
-        # Planning to a Pose Goal
-        # We can plan a motion for this group to a desired pose for the
-        # end-effector:
-        move_group = self.move_group
-        pose_goal = geometry_msgs.msg.Pose()
-
-        pose_goal.orientation.w = orientation[3]
-        pose_goal.orientation.x = orientation[0]
-        pose_goal.orientation.y = orientation[1]
-        pose_goal.orientation.z = orientation[2]
-
-        pose_goal.position.x = position[0]
-        pose_goal.position.y = position[1]
-        pose_goal.position.z = position[2]
-
-        move_group.set_pose_target(pose_goal)
-
-        is_success, traj, planning_time, error_code = move_group.plan(joints=pose_goal)
-        _msg = "success" if is_success else "failed"
-        rospy.loginfo(f"Planning is [ {_msg} ] (error code : {error_code.val}, planning time : {planning_time:.2f}s)")
-        self.display_trajectory(traj)
-
-        input("\nWait for Enter to execute the plan...")
-        if is_success:
-            rospy.loginfo("Executing the plan")
-            move_group.execute(traj, wait=True)
-
-        # Calling `stop()` ensures that there is no residual movement
-        move_group.stop()
-        # It is always good to clear your targets after planning with poses.
-        # Note: there is no equivalent function for clear_joint_value_targets().
-        move_group.clear_pose_targets()
-
-        # For testing:
-        # Note that since this section of code will not be included in the tutorials
-        # we use the class variable rather than the copied state variable
-        current_pose = self.move_group.get_current_pose().pose
-        print("Current pose state", current_pose)
-        return all_close(pose_goal, current_pose, 0.001)
-
+        return rpy
+    
     def go_to_default(self):
         move_group = self.move_group
 
@@ -575,6 +410,41 @@ class MoveitPython(object):
         return False
         # END_SUB_TUTORIAL
 
+    def jenga_extract(self, target_point, temp_point, method):
+        
+        self.change_tcp(method=method)
+        time.sleep(1)
+        rpy = self.two_points_to_rpy(target_point=target_point,temp_point=temp_point)
+        x = temp_point[0] - target_point[0]
+        y = temp_point[1] - target_point[1]
+        r = sqrt(x **2 + y **2)
+        if method == "grasp":
+            self.rpy_goal(rpy=rpy,xyz=target_point)
+            print("rpy", rpy)
+            self.grasp_client(0.07)
+            time.sleep(1)
+            extract = [0.11*x/r, 0.11* y/r,0]
+            self.execute_plan(self.plan_cartesian_path(cartesian_move=extract, avoid_collisions=False)[0])
+            time.sleep(1)
+            self.move_client(0.08)
+            print("grasp extraction complete")
+        elif method == "push":
+            self.rpy_goal(rpy=rpy,xyz=temp_point)
+            print("rpy", rpy)
+            self.move_client(0)
+            time.sleep(1)
+            extract = [-0.10*x/r, -0.10* y/r,0]
+            self.execute_plan(self.plan_cartesian_path(cartesian_move=extract, avoid_collisions=False)[0])
+            time.sleep(1)
+            extract = [0.11*x/r, 0.11* y/r,0]
+            self.execute_plan(self.plan_cartesian_path(cartesian_move=extract, avoid_collisions=False)[0])
+            time.sleep(1)
+            self.move_client(0.08)
+            print("push extraction complete")
+        else:
+            print("wrong method")
+
+    # gripper control
     def grasp_client(width=0.022):
         # Creates the SimpleActionClient, passing the type of the action
         # (GraspAction) to the constructor.
@@ -622,52 +492,7 @@ class MoveitPython(object):
         # Prints out the result of executing the action
         return client.get_result()  # A GraspResult
 
-    def manual_move(dt, moveit_class):
-        joint_states = moveit_class.move_group.get_current_joint_values()
-        print(joint_states)
-        traj = moveit_msgs.msg.RobotTrajectory()
-        points = traj.joint_trajectory.points
-        traj.joint_trajectory.joint_names = [f"panda_joint{i+1}" for i in range(7)]
-        traj.joint_trajectory.header.frame_id = "panda_link0"
-        pt = trajectory_msgs.msg.JointTrajectoryPoint()
-        pt.positions = list(dcp(joint_states))
-        pt.velocities = [0.0] * 7
-        pt.accelerations = [0.0] * 7
-        pt.time_from_start = rospy.Duration(0.0)
-        points.append(dcp(pt))
-        print("current position:", pt.positions)
-
-        for _ in range(2):
-            print(f"\nReceiving information of the {len(points)}-th point...")
-            #pt.positions = list(map(lambda x: np.deg2rad(float(x)), input("Enter the point's positions:").split(' ')))
-            #if pt.positions[0] > 17:
-            #    break
-            pt.positions=[]
-            pt.accelerations=[]
-            pt.velocities = list(map(lambda x: np.deg2rad(float(x)), input("Enter the point's velocities:").split(' ')))
-            #pt.accelerations = list(map(lambda x: np.deg2rad(float(x)), input("Enter the point's accelerations:").split(' ')))
-            pt.time_from_start += rospy.Duration(dt)
-            points.append(dcp(pt))
-
-        print(traj)
-        input("press any to continue")
-        moveit_class.display_trajectory(traj)
-        if bool(input("confirm?")):
-            return moveit_class.move_group.execute(traj)
-        else:
-            return False
-    def get_quaternion_from_euler(roll, pitch, yaw):
-        qx = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
-        qy = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
-        qz = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
-        qw = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
-        norm = np.sqrt(qx**2 + qy**2+qz**2+qw**2)
-        qx /= norm
-        qy /= norm
-        qz /= norm
-        qw /= norm
-        return [qx, qy, qz, qw]
-    
+    # collsion control
     def add_camera_box(self, timeout=4):
         box_name = self.box_name
         scene = self.scene
@@ -698,6 +523,7 @@ class MoveitPython(object):
         scene.add_box(box_name, box_pose, size=(0.02, 0.09, 0.09))
         self.box_name = box_name
         return self.wait_for_state_update(box_is_known=True, timeout=timeout)
+
     def add_finger_boxes(self, timeout=4):
         box1_name = self.box_name
         box2_name = self.box_name
@@ -721,16 +547,29 @@ class MoveitPython(object):
         self.box_name = box1_name
         self.box_name = box2_name
         return self.wait_for_state_update(box_is_known=True, timeout=timeout)
-    def add_jenga_box(self, timeout=4):
+
+    def add_jenga_box(self, points = None, timeout=4):
         box_name = self.box_name
         scene = self.scene
         # Add jenga box to the scene.
         box_pose = geometry_msgs.msg.PoseStamped()
         box_pose.header.frame_id = self.robot.get_planning_frame()
-        box_pose.pose.orientation.w = 1.0
-        box_pose.pose.position.x = 0.4
-        box_pose.pose.position.y = -0.4
-        box_pose.pose.position.z = 0.165
+        if points is None:
+            box_pose.pose.orientation.w = 1.0
+            box_pose.pose.position.x = 0.4
+            box_pose.pose.position.y = -0.4
+            box_pose.pose.position.z = 0.165
+        else:
+            box_pose.pose.position.x = (points[0][0]+points[1][0]+points[2][0]+points[3][0])/4
+            box_pose.pose.position.y = (points[0][1]+points[1][1]+points[2][1]+points[3][1])/4
+            box_pose.pose.position.z = 0.165
+            rpy = self.two_points_to_rpy(points[0],points[1])
+            print(rpy)
+            x, y, z, w = get_quaternion_from_euler(0,0,rpy[2])
+            box_pose.pose.orientation.x = x
+            box_pose.pose.orientation.y = y
+            box_pose.pose.orientation.z = z
+            box_pose.pose.orientation.w = w
         box_name = "jenga_box"
         scene.add_box(box_name, box_pose, size=(0.075, 0.075, 0.33))
         self.box_name = box_name
@@ -790,123 +629,29 @@ class MoveitPython(object):
             box_is_attached=False, box_is_known=False, timeout=timeout
         )
 
-<<<<<<< HEAD
-def grasp_client(width=0.022):
-    # Creates the SimpleActionClient, passing the type of the action
-    # (GraspAction) to the constructor.
-    client = actionlib.SimpleActionClient('/franka_gripper/grasp', franka_gripper.msg.GraspAction)
+    #not usnig now.
+    def go_to_back_position(self):
+        orientation = [pi/2,pi/2,pi/2]
+        position = [0.34,-0.4,0.2]
+        self.rpy_goal(orientation, position)
+        return True
 
-    # Waits until the action server has started up and started
-    # listening for goals.
-    client.wait_for_server()
+    def go_to_right_position(self):
+        orientation = [0,pi/2,-pi/2]
+        position = [0.4,-0.34,0.2]
+        self.rpy_goal(orientation, position)
+        return True
 
-    # Creates a goal to send to the action server.
-    goal = franka_gripper.msg.GraspGoal()
-    goal.width = width
-    goal.epsilon.inner = 0.007
-    goal.epsilon.outer = 0.0085
-    goal.speed = 0.1
-    goal.force = 5
-
-    # Sends the goal to the action server.
-    client.send_goal(goal)
-
-    # Waits for the server to finish performing the action.
-    client.wait_for_result()
-
-    # Prints out the result of executing the action
-    return client.get_result()  # A GraspResult
-
-def move_client(width=0.022):
-    # Creates the SimpleActionClient, passing the type of the action
-    # (GraspAction) to the constructor.
-    client = actionlib.SimpleActionClient('/franka_gripper/move', franka_gripper.msg.MoveAction)
-
-    # Waits until the action server has started up and started
-    # listening for goals.
-    client.wait_for_server()
-
-    # Creates a goal to send to the action server.
-    goal = franka_gripper.msg.MoveGoal()
-    goal.width = width
-    goal.speed = 0.1
-
-    # Sends the goal to the action server.
-    client.send_goal(goal)
-    client.wait_for_result()
-
-    # Prints out the result of executing the action
-    return client.get_result()  # A GraspResult
-
-def get_quaternion_from_euler(roll, pitch, yaw):
-
-    qx = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
-    qy = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
-    qz = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
-    qw = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
-    norm = np.sqrt(qx**2 + qy**2+qz**2+qw**2)
-    qx /= norm
-    qy /= norm
-    qz /= norm
-    qw /= norm
-    return [qx, qy, qz, qw]
-
-
-
-
-def manual_move(dt, moveit_class):
-    joint_states = moveit_class.move_group.get_current_joint_values()
-    traj = moveit_msgs.msg.RobotTrajectory()
-    points = traj.joint_trajectory.points
-    traj.joint_trajectory.joint_names = [f"panda_joint{i+1}" for i in range(7)]
-    traj.joint_trajectory.header.frame_id = "panda_link0"
-    pt = trajectory_msgs.msg.JointTrajectoryPoint()
-    pt.positions = list(dcp(joint_states))
-    pt.velocities = [0.0] * 7
-    pt.accelerations = [0.0] * 7
-    pt.time_from_start = rospy.Duration(0.0)
-    points.append(dcp(pt))
-    print("current position:", pt.positions)
-
-    while True:
-        print(f"\nReceiving information of the {len(points)}-th point...")
-        pt.positions = list(map(lambda x: np.deg2rad(float(x)), input("Enter the point's positions:").split(' ')))
-        if pt.positions[0] > 17:
-            break
-        pt.velocities = list(map(lambda x: np.deg2rad(float(x)), input("Enter the point's velocities:").split(' ')))
-        pt.accelerations = list(map(lambda x: np.deg2rad(float(x)), input("Enter the point's accelerations:").split(' ')))
-        pt.time_from_start += rospy.Duration(dt)
-        points.append(dcp(pt))
-
-    print(traj)
-    if bool(input("confirm?")):
-        return moveit_class.move_group.execute(traj)
-    else:
-        return False
-
-=======
->>>>>>> 9d9aae7d8dc6902527a1f0f108c7f6816a46c1e0
 
 
 def main():
 
     try:
         move = MoveitPython()
+        time.sleep(1)
 
-<<<<<<< HEAD
-        #os.system("python3 "+os.path.dirname(__file__)+"/jenga_obstacle_environment.py")
+        os.system("python3 "+os.path.dirname(__file__)+"/jenga_obstacle_environment.py")
         rospy.sleep(1)
-        print("============ Default Jenga Playing Scene ============")
-        print("============ Adding Collision control objects ============")
-        #move.add_camera_box()
-        #move.add_finger_boxes()
-        #move.attach_camera_box()
-        #move.attach_finger_boxes()
-        print("============ Adding Jenga to the scene ============")
-        #move.add_jenga_box()
-=======
-        # os.system("python3 "+os.path.dirname(__file__)+"/jenga_obstacle_environment.py")
-        # rospy.sleep(1)
         # print("============ Default Jenga Playing Scene ============")
         # print("============ Adding Collision control objects ============")
         # move.add_camera_box()
@@ -915,7 +660,6 @@ def main():
         # move.attach_finger_boxes()
         # print("============ Adding Jenga to the scene ============")
         # move.add_jenga_box()
->>>>>>> 9d9aae7d8dc6902527a1f0f108c7f6816a46c1e0
 
         while True:
             command=input("\ncommand:")
@@ -923,35 +667,22 @@ def main():
             #planning and execution functions
             if command=="init":
                 move.go_to_default()
-                move.move_client()
-                move.move_client(0.08)
+                #move.move_client()
+                #move.move_client(0.08)
+            elif command == "quit":
+                break
             elif command == "change tcp":
-                move.change_tcp(group_name=None)
-            elif command=="goal":
-                ans=input("orientation_euler:").split(' ')
-                orientation = move.get_quaternion_from_euler(float(ans[0]), float(ans[1]), float(ans[2]))
-                ans=input("position:")
-                position = [float(ans.split(' ')[i]) for i in range(3)]
-                move.go_to_pose_goal(orientation, position)
+                move.change_tcp(method=None, group_name=None)
             elif command == "cartesian":
                 ans=input("cartesian move:")
                 cartesian_move = [float(ans.split(' ')[i]) for i in range(3)]
-                cartesian_plan, fraction = move.plan_cartesian_path(cartesian_move, avoid_collisions=True)
-                #print(type(cartesian_plan))
+                cartesian_plan, fraction = move.plan_cartesian_path(cartesian_move, avoid_collisions=False)
                 move.display_trajectory(cartesian_plan)
-                #print(cartesian_plan)
                 if input("if the plan is valid press enter to execute or press q to abort")=='q':
                     print("quit")
                     continue
                 move.execute_plan(cartesian_plan)
-            elif command=="manual":
-<<<<<<< HEAD
-                print(manual_move(float(input("dt:")), move))
-            elif command=="camera":
-                move.go_to_camera_position()
-=======
-                print(move.manual_move(float(input("dt:")), move))
-            elif command == "rpy":
+            elif command == "goal":
                 tmp=input("Orientation_RPY:").split(' ')
                 rpy = [float(tmp[0]), float(tmp[1]), float(tmp[2])]
                 tmp=input("Position:").split(' ')
@@ -960,10 +691,10 @@ def main():
                 print(xyz)
                 move.rpy_goal(rpy, xyz)
             elif command =="rpy2":
-                move.two_points_to_pose(target_point=[0.3,-0.4,0.4],temp_point=[0.6, -0.5,0.21])
+                rpy = move.two_points_to_rpy(target_point=[0.3,-0.4,0.4],temp_point=[0.6, -0.5,0.21])
+                move.rpy_goal(rpy,[0.3,-0.4,0.4])
                 
                 
->>>>>>> 9d9aae7d8dc6902527a1f0f108c7f6816a46c1e0
 
             #gripper functions
             elif command=="grasp":
@@ -978,110 +709,59 @@ def main():
                 move.go_to_back_position()
             elif command=="right":
                 move.go_to_right_position()
-
-            elif command=="rpy_test":
+                
+            elif command=="test":
+                #move.move_client(0.08)
                 move.go_to_default()
                 time.sleep(1)
-                move.change_tcp("panda_manipulator")
-                move.rpy_goal([pi/2, pi/2, pi/2],[0.34, -0.4, 0.196])
-                time.sleep(1)
-                #move.grasp_client(0.072) pi.
-                time.sleep(1)
-                move.execute_plan(move.plan_cartesian_path([-0.16,0,0])[0])
-                #move.move_client(0.08)
-                time.sleep(1)
-                move.change_tcp("panda_manipulator2")
-                time.sleep(1)
-                #move.move_client(0)
-                move.rpy_goal([pi/2, pi/2, 0],[0.4, -0.32, 0.121])
-                time.sleep(1)
-                move.execute_plan(move.plan_cartesian_path([0,-0.1,0])[0])
-                time.sleep(2)
-                move.execute_plan(move.plan_cartesian_path([0,0.11,0])[0])
+                
+                #camera position
+                move.rpy_goal([pi/2, pi/2, -pi/4],[0.5, -0.2, 0.3])
+                
+                ############### take picture and callib ######################
+                
+                
+                
+                
+                ###############give me 4 poinst to make jenga################
+                points = [[0.29,-0.31,0],[0.31,-0.39,0],[0.39,-0.37,0],[0.37,-0.29,0]]
+                # give me succeeding points
+                move.add_jenga_box(points)
+                
+                while True:
+                    command = input("\njenga to extract: ")
+                    if command == "q":
+                        break
+                    try:
+                        command = command.strip().split()
+                        color = command[0]
+                        num = int(command[1])
+                    except:
+                        continue
+                    print(color, num)
+
+                    
+                    ################### get two points and method #################
+                    # color = 'green'
+                    # num = 5
+
+                    
+                    
+                    
+                    
+                    
+                    # vision result
+                    target_point = [0.34,-0.34,0.2]
+                    temp_point = [0.34,-0.2,0.2]
+                    method = 'push'
+                    ###############################################################
+                    move.jenga_extract(target_point,temp_point,method)
+
                 time.sleep(1)
                 #move.move_client(0.08)
                 move.go_to_default()
             
-            elif command=="tcp_test":
-                move.go_to_default()
-                time.sleep(1)
-                move.change_tcp("panda_manipulator")
-                move.go_to_pose_goal(move.get_quaternion_from_euler(1.57, 1.57, 1.57), [0.373,-0.4,0.196])
-                time.sleep(1)
-                move.grasp_client(0.072)
-                time.sleep(1)
-                move.execute_plan(move.plan_cartesian_path([-0.16,0,0])[0])
-                move.move_client(0.08)
-                time.sleep(1)
-                move.change_tcp("panda_manipulator2")
-                time.sleep(1)
-                move.move_client(0)
-                move.go_to_pose_goal(move.get_quaternion_from_euler(1.57, 1.57, 1.57), [0.36,-0.4,0.124])
-                time.sleep(1)
-                move.execute_plan(move.plan_cartesian_path([0.09,0,0])[0])
-                time.sleep(2)
-                move.execute_plan(move.plan_cartesian_path([-0.1,0,0])[0])
-                time.sleep(1)
-                move.move_client(0.08)
-                move.go_to_default()
-
-            elif command=="cue_test":
-                time.sleep(1)
-                move.go_to_default()
-                time.sleep(1)
-                move.go_to_back_position()
-                time.sleep(1)
-
-                move.execute_plan(move.plan_cartesian_path([0.12,0,0])[0])
-                time.sleep(1)
-                move.grasp_client(0.072)
-                time.sleep(1)
-                move.execute_plan(move.plan_cartesian_path([-0.12,0,0])[0])
-                time.sleep(1)
-
-                move.move_client(0.08)
-                time.sleep(1)
-                move.execute_plan(move.plan_cartesian_path([0,0,0.015])[0])
-                time.sleep(1)
-                move.move_client(0)
-                time.sleep(1)
-
-                move.execute_plan(move.plan_cartesian_path([0.085,0,0])[0])
-                time.sleep(1)
-                move.execute_plan(move.plan_cartesian_path([-0.085,0,0])[0])
-                time.sleep(1)
-                move.move_client(0.08)
-                time.sleep(1)
-
-
-                move.go_to_right_position()
-                time.sleep(1)
-
-
-                move.execute_plan(move.plan_cartesian_path([0,0,-0.045])[0])
-                time.sleep(1)
-                move.execute_plan(move.plan_cartesian_path([0,-0.13,0])[0])
-                time.sleep(1)
-                move.grasp_client(0.072)
-                time.sleep(1)
-                move.execute_plan(move.plan_cartesian_path([0,0.13,0,0])[0])
-                time.sleep(1)
-
-                move.move_client(0.08)
-                time.sleep(1)
-                move.execute_plan(move.plan_cartesian_path([0,0,0.015])[0])
-                time.sleep(1)
-                move.move_client(0)
-                time.sleep(1)
-
-                move.execute_plan(move.plan_cartesian_path([0,-0.095,0])[0])
-                time.sleep(1)
-                move.execute_plan(move.plan_cartesian_path([0,0.095,0,0])[0])
-                time.sleep(1)
-                move.move_client(0.08)
-
-                move.go_to_default()
-
+        
             else:
                 print("command error")
     except rospy.ROSInterruptException:
