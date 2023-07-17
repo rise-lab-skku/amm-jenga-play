@@ -431,15 +431,15 @@ class MoveitPython(object):
         elif method == "push":
             self.rpy_goal(rpy=rpy,xyz=temp_point)
             print("rpy", rpy)
-            #self.move_client(0)
+            self.move_client(0)
             time.sleep(1)
-            extract = [-0.15*x/r, -0.15* y/r,0]
+            extract = [-0.10*x/r, -0.10* y/r,0]
             self.execute_plan(self.plan_cartesian_path(cartesian_move=extract, avoid_collisions=False)[0])
             time.sleep(1)
-            extract = [0.15*x/r, 0.15* y/r,0]
+            extract = [0.11*x/r, 0.11* y/r,0]
             self.execute_plan(self.plan_cartesian_path(cartesian_move=extract, avoid_collisions=False)[0])
             time.sleep(1)
-            #self.move_client(0.08)
+            self.move_client(0.08)
             print("push extraction complete")
         else:
             print("wrong method")
@@ -724,7 +724,7 @@ def main():
                 
                 
                 ###############give me 4 poinst to make jenga################
-                points = [[0.3,-0.3,0],[0.3,-0.38,0],[0.38,-0.38,0],[0.38,-0.3,0]]
+                points = [[0.29,-0.31,0],[0.31,-0.39,0],[0.39,-0.37,0],[0.37,-0.29,0]]
                 # give me succeeding points
                 move.add_jenga_box(points)
                 
@@ -751,8 +751,8 @@ def main():
                     
                     
                     # vision result
-                    target_point = [0.34,-0.34,0.4]
-                    temp_point = [0.34,-0.2,0.37]
+                    target_point = [0.34,-0.34,0.2]
+                    temp_point = [0.34,-0.2,0.2]
                     method = 'push'
                     ###############################################################
                     move.jenga_extract(target_point,temp_point,method)
