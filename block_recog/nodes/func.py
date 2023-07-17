@@ -203,7 +203,7 @@ def get_coordinate(target_block, blocks_pcd_by_color, trans):
                 cen_y = y_mean #- 75/2
                 cen_z = z_mean
                 
-                target_x = cen_x + 150
+                target_x = cen_x + 50
                 target_y = cen_y
                 target_z = cen_z
                 
@@ -216,7 +216,7 @@ def get_coordinate(target_block, blocks_pcd_by_color, trans):
                 cen_z = z_mean
                 
                 target_x = cen_x
-                target_y = cen_y + 150
+                target_y = cen_y +z50
                 target_z = cen_z
                 
             elif abs(center_coordinate[0]) < 10 and box_extent [1] < 15:
@@ -228,7 +228,7 @@ def get_coordinate(target_block, blocks_pcd_by_color, trans):
                 cen_z = z_mean
                 
                 target_x = cen_x
-                target_y = cen_y + 150
+                target_y = cen_y + 50
                 target_z = cen_z
                 
             elif abs(center_coordinate[1]) < 10 and box_extent [0] < 15:
@@ -239,7 +239,7 @@ def get_coordinate(target_block, blocks_pcd_by_color, trans):
                 cen_y = y_mean# - 25/2
                 cen_z = z_mean
                 
-                target_x = cen_x + 150
+                target_x = cen_x + 50
                 target_y = cen_y
                 target_z = cen_z
                 
@@ -251,7 +251,7 @@ def get_coordinate(target_block, blocks_pcd_by_color, trans):
                 cen_y = y_mean - 75/2
                 cen_z = z_mean
                 
-                target_x = cen_x - 150
+                target_x = cen_x - 50
                 target_y = cen_y
                 target_z = cen_z
                 
@@ -264,7 +264,7 @@ def get_coordinate(target_block, blocks_pcd_by_color, trans):
                 cen_z = z_mean
                 
                 target_x = cen_x
-                target_y = cen_y - 150
+                target_y = cen_y - 50
                 target_z = cen_z
                 
             else:
