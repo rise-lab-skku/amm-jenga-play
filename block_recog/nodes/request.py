@@ -78,23 +78,52 @@ if __name__ == '__main__':
         try:
             # lookupTransform('target', 'source', Time)
             (trans_cali,rot_cali) = listener.lookupTransform('camera_base', 'panda_hand', rospy.Time(0))
-            (trans_world,rot_world) = listener.lookupTransform('world', 'panda_hand', rospy.Time(0))
+            # (trans_world,rot_world) = listener.lookupTransform('panda_link0', 'panda_hand', rospy.Time(0))    # world
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
             continue
         
         # rospy.loginfo((trans, rot))
         
         # TARGET BLOCK INPUT (EX. 'green 1')
-        target_block = None
-        target_coordinate, vector = get_coordinate(target_block, blocks_pcd_by_color, transform_matrix)
+        target_block = "red 1"
+        center_coordinate, target_coordinate, vector = get_coordinate(target_block, blocks_pcd_by_color, transform_matrix)
+        
+        jenga_first_coord1 = np.array([37.5, 37.5, 0])
+        jenga_first_coord2 = np.array([37.5, -37.5, 0])
+        jenga_first_coord3 = np.array([-37.5, -37.5, 0])
+        jenga_first_coord4 = np.array([-37.5, 37.5, 0])
+        
+        jenga_first_coord = [jenga_first_coord1, jenga_first_coord2, jenga_first_coord3, jenga_first_coord4]
+        
+        
         
         cali_transform_matrix = transform_mat_from_trans_rot(trans_cali, rot_cali)
-        to_world_transform_matrix = transform_mat_from_trans_rot(trans_world, rot_cali)
+        # to_world_transform_matrix = transform_mat_from_trans_rot(trans_world, rot_cali)
         
         mesh_to_camera_matrix = np.linalg.inv(transform_matrix)
         camera_to_hand_matrix = np.linalg.inv(cali_transform_matrix)
         
-        for tran_mat in [mesh_to_camera_matrix, camera_to_hand_matrix, to_world_transform_matrix]:
+        jenga_transformed_coord = []
+        
+        for jfc in jenga_first_coord:
+            for tran_mat in [mesh_to_camera_matrix, camera_to_hand_matrix]:
+                jenga_transformed_coord.append(jenga_transformed_coord)
+        
+        rospy.loginfo("jenga_transformed_coord")        
+        rospy.loginfo(jenga_transformed_coord)
+        
+        for tran_mat in [mesh_to_camera_matrix, camera_to_hand_matrix]:
+            center_coordinate = coordinate_transform(center_coordinate, mesh_to_camera_matrix)
             target_coordinate = coordinate_transform(target_coordinate, mesh_to_camera_matrix)
-            vector = coordinate_transform(vector, mesh_to_camera_matrix)
+        
+        
+        
+        vector = center_coordinate - target_coordinate
+        
+        rospy.loginfo("center_coordinate")
+        rospy.loginfo(center_coordinate)
+        rospy.loginfo("target_coordinate")
+        rospy.loginfo(target_coordinate)
+        rospy.loginfo("vector")
+        rospy.loginfo(vector)
             

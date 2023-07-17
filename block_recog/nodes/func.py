@@ -6,11 +6,6 @@ from matplotlib import pyplot as plt
 import copy
 
 
-initial_transform = np.asarray([[0, 0, -1, 0],
-                                    [1, 0, 0, 0],
-                                    [0, -1, 0, 0],
-                                    [0, 0, 0, 1]])
-
 def img_masking(img_color, color):
     
     img_hsv = cv2.cvtColor(img_color, cv2.COLOR_BGR2HSV)
@@ -274,10 +269,11 @@ def get_coordinate(target_block, blocks_pcd_by_color, trans):
                 
             else:
                 print("NOTHING")
-                
+    
+    center_coordinate = np.array([cen_x, cen_y, cen_z])            
     target_coordinate = np.array([target_x, target_y, target_z])
     
-    return target_coordinate, vector
+    return center_coordinate, target_coordinate, vector
 
 def coordinate_transform(coordinate, transform_matrix):
     coordinate = copy.deepcopy(coordinate)

@@ -5,7 +5,6 @@ import cv2
 import glob
 import open3d as o3d
 from matplotlib import pyplot as plt
-from func import *
 
 import rospy
 from sensor_msgs.msg import Image

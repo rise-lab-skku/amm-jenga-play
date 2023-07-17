@@ -13,12 +13,12 @@ Jenga play with Franka Reasearch 3 [SKKU 2023 URP Team2's Project]
 ### Get **RGB Image & Depth Image** from RGB-D Camera (Intel® RealSense™ Depth Camera D435f)
 | RGB Image | Depth Image |
 | :-: | :-: |
-| <img src="./block_recog/test_imgs/jenga_tower_color.png" width="400"> | <img src="./block_recog/test_imgs/jenga_tower_depth.png" width="400"> |
+| <img src="./imgs/color.png" width="400"> | <img src="./imgs/depth.png" width="400"> |
 
 ### Get each Block's Mask from RGB Image
-| Extract Blue | Blue Mask | One Block Color | One Block Mask |
+| Extract Red | Red Mask | One Block Color | One Block Mask |
 | :-: | :-: | :-: | :-: |
-| <img src="./imgs/blue_extract.png" width="400"> | <img src="./imgs/blue_mask.png" width="400"> | <img src="./imgs/blue_block1_color.png" width="400"> | <img src="./imgs/blue_block1_mask.png" width="400"> |
+| <img src="./imgs/red_extract.png" width="400"> | <img src="./imgs/red_mask.png" width="400"> | <img src="./imgs/red_block2_color.png" width="400"> | <img src="./imgs/red_block2_mask.png" width="400"> |
 
 | Blocks Merge | Masks Merge |
 | :-: | :-: |
@@ -42,4 +42,4 @@ Jenga play with Franka Reasearch 3 [SKKU 2023 URP Team2's Project]
 | Source Point Cloud (Outlier Removed) | Target Point Cloud  |
 | :-: | :-: |
 | <img src="./imgs/block_pcd_center_target.png" width="400"> | <img src="./imgs/tower_pcd_target.png" width="400"> |
-Estimated Block Center Point (Red) and TCP Target Point (Blue)
+Estimated Block Center Point (Red) and TCP Target Point (Red)
