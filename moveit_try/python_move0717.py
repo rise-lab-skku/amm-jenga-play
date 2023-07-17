@@ -72,7 +72,7 @@ class MoveitPython(object):
         # If you are using a different robot, change this value to the name of your robot
         # arm planning group.
         # This interface can be used to plan and execute motions:
-        #group_name = "panda_arm" to make TCP as Panda_manipulaotor new fingert tip
+        #self.group_name = "panda_arm"# to make TCP as Panda_manipulaotor new fingert tip
         self.group_name = "panda_manipulator2"
         move_group = moveit_commander.MoveGroupCommander(self.group_name)
         #print(dir(move_group))
@@ -281,7 +281,48 @@ class MoveitPython(object):
         position = [0.4,-0.34,0.2]
         self.go_to_pose_goal(orientation, position)
         return True
+    def go_to_camera_position(self):
+        # Copy class variables to local variables to make the web tutorials more clear.
+        # In practice, you should use the class variables directly unless you have a good
+        # reason not to.
+        move_group = self.move_group
 
+        # BEGIN_SUB_TUTORIAL plan_to_joint_state
+        #
+        # Planning to a Joint Goal
+        # ^^^^^^^^^^^^^^^^^^^^^^^^
+        # The Panda's zero configuration is at a `singularity <https://www.quora.com/Robotics-What-is-meant-by-kinematic-singularity>`_, so the first
+        # thing we want to do is move it to a slightly better configuration.
+        # We use the constant `tau = 2*pi <https://en.wikipedia.org/wiki/Turn_(angle)#Tau_proposals>`_ for convenience:
+        # We get the joint values from the group and change some of the values:
+        joint_goal = move_group.get_current_joint_values()
+        print("Current joint state", joint_goal)
+        joint_goal = [-1.9980749713412709, -1.3835496704440862, 1.6113084969627036, -1.6909211688426125, 0.22785834064266122, 1.6401951051290105, 2.4127905438974997]
+        print("Goal joint state", joint_goal)
+        # The go command can be called with joint values, poses, or without any
+        # parameters if you have already set the pose or joint target for the group
+        #move_group.go(joint_goal, wait=True)
+
+        is_success, traj, planning_time, error_code = move_group.plan(joints=joint_goal)
+        _msg = "success" if is_success else "failed"
+        rospy.loginfo(f"Planning is [ {_msg} ] (error code : {error_code.val}, planning time : {planning_time:.2f}s)")
+        print(traj)
+        self.display_trajectory(traj)
+
+        input("\nWait for any key to execute the plan...")
+        if is_success:
+            rospy.loginfo("Executing the plan")
+            move_group.execute(traj, wait=True)
+
+        # Calling ``stop()`` ensures that there is no residual movement
+        move_group.stop()
+
+        # END_SUB_TUTORIAL
+
+        # For testing:
+        current_joints = move_group.get_current_joint_values()
+        print("hello Current joint state", current_joints)
+        return all_close(joint_goal, current_joints, 0.001)
     def go_to_pose_goal(self, orientation, position):
         # Planning to a Pose Goal
         # We can plan a motion for this group to a desired pose for the
@@ -604,7 +645,6 @@ class MoveitPython(object):
             box_is_attached=False, box_is_known=False, timeout=timeout
         )
 
-
 def grasp_client(width=0.022):
     # Creates the SimpleActionClient, passing the type of the action
     # (GraspAction) to the constructor.
@@ -665,9 +705,11 @@ def get_quaternion_from_euler(roll, pitch, yaw):
     qw /= norm
     return [qx, qy, qz, qw]
 
+
+
+
 def manual_move(dt, moveit_class):
     joint_states = moveit_class.move_group.get_current_joint_values()
-    print(joint_states)
     traj = moveit_msgs.msg.RobotTrajectory()
     points = traj.joint_trajectory.points
     traj.joint_trajectory.joint_names = [f"panda_joint{i+1}" for i in range(7)]
@@ -680,21 +722,17 @@ def manual_move(dt, moveit_class):
     points.append(dcp(pt))
     print("current position:", pt.positions)
 
-    for _ in range(2):
+    while True:
         print(f"\nReceiving information of the {len(points)}-th point...")
-        #pt.positions = list(map(lambda x: np.deg2rad(float(x)), input("Enter the point's positions:").split(' ')))
-        #if pt.positions[0] > 17:
-        #    break
-        pt.positions=[]
-        pt.accelerations=[]
+        pt.positions = list(map(lambda x: np.deg2rad(float(x)), input("Enter the point's positions:").split(' ')))
+        if pt.positions[0] > 17:
+            break
         pt.velocities = list(map(lambda x: np.deg2rad(float(x)), input("Enter the point's velocities:").split(' ')))
-        #pt.accelerations = list(map(lambda x: np.deg2rad(float(x)), input("Enter the point's accelerations:").split(' ')))
+        pt.accelerations = list(map(lambda x: np.deg2rad(float(x)), input("Enter the point's accelerations:").split(' ')))
         pt.time_from_start += rospy.Duration(dt)
         points.append(dcp(pt))
 
     print(traj)
-    input("press any to continue")
-    moveit_class.display_trajectory(traj)
     if bool(input("confirm?")):
         return moveit_class.move_group.execute(traj)
     else:
@@ -707,16 +745,16 @@ def main():
     try:
         move = MoveitPython()
 
-        os.system("python3 "+os.path.dirname(__file__)+"/jenga_obstacle_environment.py")
+        #os.system("python3 "+os.path.dirname(__file__)+"/jenga_obstacle_environment.py")
         rospy.sleep(1)
         print("============ Default Jenga Playing Scene ============")
         print("============ Adding Collision control objects ============")
-        move.add_camera_box()
-        move.add_finger_boxes()
-        move.attach_camera_box()
-        move.attach_finger_boxes()
+        #move.add_camera_box()
+        #move.add_finger_boxes()
+        #move.attach_camera_box()
+        #move.attach_finger_boxes()
         print("============ Adding Jenga to the scene ============")
-        move.add_jenga_box()
+        #move.add_jenga_box()
 
         while True:
             command=input("\ncommand:")
@@ -747,6 +785,8 @@ def main():
                 move.execute_plan(cartesian_plan)
             elif command=="manual":
                 print(manual_move(float(input("dt:")), move))
+            elif command=="camera":
+                move.go_to_camera_position()
 
             #gripper functions
             elif command=="grasp":
