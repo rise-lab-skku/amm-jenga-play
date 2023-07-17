@@ -130,16 +130,24 @@ class MoveitPython(object):
         self.eef_link = eef_link
         self.group_names = group_names
 
-    def change_tcp(self, group_name):
+    def change_tcp(self, method, group_name):
         robot = moveit_commander.RobotCommander()
         #print("hello",self.group_name)
-        if group_name is None:
-            if self.group_name == "panda_manipulator2":
-                self.group_name = "panda_manipulator"
+        if method is None:
+            if group_name is None:
+                if self.group_name == "panda_manipulator2":
+                    self.group_name = "panda_manipulator"
+                else:
+                    self.group_name = "panda_manipulator2"
             else:
-                self.group_name = "panda_manipulator2"
+                self.group_name = group_name
+        elif method == "grasp":
+            self.group_name = "panda_manipulator"
+        elif method == "push":
+            self.group_name = "panda_manipulator2"
         else:
-            self.group_name = group_name
+            print("define method correctly")
+            self.group_name = "panda_manipulator2"
 
         move_group = moveit_commander.MoveGroupCommander(self.group_name)
         print(self.group_name)
@@ -237,143 +245,6 @@ class MoveitPython(object):
         print(rpy)
         print(position)
         self.rpy_goal(rpy,position)
-
-    def go_to_right_state_joint(self):
-        #0 1.57 -1.57
-
-        move_group = self.move_group
-
-        # BEGIN_SUB_TUTORIAL plan_to_joint_state
-        #
-        # Planning to a Joint Goal
-        # ^^^^^^^^^^^^^^^^^^^^^^^^
-        # The Panda's zero configuration is at a `singularity <https://www.quora.com/Robotics-What-is-meant-by-kinematic-singularity>`_, so the first
-        # thing we want to do is move it to a slightly better configuration.
-        # We use the constant `tau = 2*pi <https://en.wikipedia.org/wiki/Turn_(angle)#Tau_proposals>`_ for convenience:
-        # We get the joint values from the group and change some of the values:
-        joint_goal = move_group.get_current_joint_values()
-        print("Current joint state", joint_goal)
-        joint_goal = [0.5814248320904081, 0.32849922433280443, -0.5749167443910467, -2.5296883764860967, -1.4873604605443078, 1.7338714269498154, 0.4507797936718414]
-        print("Goal joint state", joint_goal)
-        # The go command can be called with joint values, poses, or without any
-        # parameters if you have already set the pose or joint target for the group
-        #move_group.go(joint_goal, wait=True)
-
-        is_success, traj, planning_time, error_code = move_group.plan(joints=joint_goal)
-        _msg = "success" if is_success else "failed"
-        rospy.loginfo(f"Planning is [ {_msg} ] (error code : {error_code.val}, planning time : {planning_time:.2f}s)")
-        print(traj)
-        self.display_trajectory(traj)
-
-        input("\nWait for any key to execute the plan...")
-        if is_success:
-            rospy.loginfo("Executing the plan")
-            move_group.execute(traj, wait=True)
-
-        # Calling ``stop()`` ensures that there is no residual movement
-        move_group.stop()
-
-        # END_SUB_TUTORIAL
-
-        # For testing:
-        current_joints = move_group.get_current_joint_values()
-        print("hello Current joint state", current_joints)
-        return all_close(joint_goal, current_joints, 0.001)
-
-    def go_to_back_state_joint(self):
-        # Copy class variables to local variables to make the web tutorials more clear.
-        # In practice, you should use the class variables directly unless you have a good
-        # reason not to.
-        move_group = self.move_group
-
-        # BEGIN_SUB_TUTORIAL plan_to_joint_state
-        #
-        # Planning to a Joint Goal
-        # ^^^^^^^^^^^^^^^^^^^^^^^^
-        # The Panda's zero configuration is at a `singularity <https://www.quora.com/Robotics-What-is-meant-by-kinematic-singularity>`_, so the first
-        # thing we want to do is move it to a slightly better configuration.
-        # We use the constant `tau = 2*pi <https://en.wikipedia.org/wiki/Turn_(angle)#Tau_proposals>`_ for convenience:
-        # We get the joint values from the group and change some of the values:
-        joint_goal = move_group.get_current_joint_values()
-        print("Current joint state", joint_goal)
-        joint_goal = [2.2935093896801315, -0.5357224503223105, 2.136197543855244, -2.468391434871596, 1.5131491402571824, 1.0860143871703416, 1.0879037017179407]
-        print("Goal joint state", joint_goal)
-        # The go command can be called with joint values, poses, or without any
-        # parameters if you have already set the pose or joint target for the group
-        #move_group.go(joint_goal, wait=True)
-
-        is_success, traj, planning_time, error_code = move_group.plan(joints=joint_goal)
-        _msg = "success" if is_success else "failed"
-        rospy.loginfo(f"Planning is [ {_msg} ] (error code : {error_code.val}, planning time : {planning_time:.2f}s)")
-        print(traj)
-        self.display_trajectory(traj)
-
-        input("\nWait for any key to execute the plan...")
-        if is_success:
-            rospy.loginfo("Executing the plan")
-            move_group.execute(traj, wait=True)
-
-        # Calling ``stop()`` ensures that there is no residual movement
-        move_group.stop()
-
-        # END_SUB_TUTORIAL
-
-        # For testing:
-        current_joints = move_group.get_current_joint_values()
-        print("hello Current joint state", current_joints)
-        return all_close(joint_goal, current_joints, 0.001)
-
-    def go_to_back_position(self):
-        orientation = get_quaternion_from_euler(1.57, 1.57, 1.57)
-        position = [0.34,-0.4,0.2]
-        self.go_to_pose_goal(orientation, position)
-        return True
-    def go_to_right_position(self):
-        orientation = get_quaternion_from_euler(0, 1.57, -1.57)
-        position = [0.4,-0.34,0.2]
-        self.go_to_pose_goal(orientation, position)
-        return True
-
-    def go_to_pose_goal(self, orientation, position):
-        # Planning to a Pose Goal
-        # We can plan a motion for this group to a desired pose for the
-        # end-effector:
-        move_group = self.move_group
-        pose_goal = geometry_msgs.msg.Pose()
-
-        pose_goal.orientation.w = orientation[3]
-        pose_goal.orientation.x = orientation[0]
-        pose_goal.orientation.y = orientation[1]
-        pose_goal.orientation.z = orientation[2]
-
-        pose_goal.position.x = position[0]
-        pose_goal.position.y = position[1]
-        pose_goal.position.z = position[2]
-
-        move_group.set_pose_target(pose_goal)
-
-        is_success, traj, planning_time, error_code = move_group.plan(joints=pose_goal)
-        _msg = "success" if is_success else "failed"
-        rospy.loginfo(f"Planning is [ {_msg} ] (error code : {error_code.val}, planning time : {planning_time:.2f}s)")
-        self.display_trajectory(traj)
-
-        input("\nWait for Enter to execute the plan...")
-        if is_success:
-            rospy.loginfo("Executing the plan")
-            move_group.execute(traj, wait=True)
-
-        # Calling `stop()` ensures that there is no residual movement
-        move_group.stop()
-        # It is always good to clear your targets after planning with poses.
-        # Note: there is no equivalent function for clear_joint_value_targets().
-        move_group.clear_pose_targets()
-
-        # For testing:
-        # Note that since this section of code will not be included in the tutorials
-        # we use the class variable rather than the copied state variable
-        current_pose = self.move_group.get_current_pose().pose
-        print("Current pose state", current_pose)
-        return all_close(pose_goal, current_pose, 0.001)
 
     def go_to_default(self):
         move_group = self.move_group
@@ -534,6 +405,7 @@ class MoveitPython(object):
         return False
         # END_SUB_TUTORIAL
 
+    # gripper control
     def grasp_client(width=0.022):
         # Creates the SimpleActionClient, passing the type of the action
         # (GraspAction) to the constructor.
@@ -581,52 +453,7 @@ class MoveitPython(object):
         # Prints out the result of executing the action
         return client.get_result()  # A GraspResult
 
-    def manual_move(dt, moveit_class):
-        joint_states = moveit_class.move_group.get_current_joint_values()
-        print(joint_states)
-        traj = moveit_msgs.msg.RobotTrajectory()
-        points = traj.joint_trajectory.points
-        traj.joint_trajectory.joint_names = [f"panda_joint{i+1}" for i in range(7)]
-        traj.joint_trajectory.header.frame_id = "panda_link0"
-        pt = trajectory_msgs.msg.JointTrajectoryPoint()
-        pt.positions = list(dcp(joint_states))
-        pt.velocities = [0.0] * 7
-        pt.accelerations = [0.0] * 7
-        pt.time_from_start = rospy.Duration(0.0)
-        points.append(dcp(pt))
-        print("current position:", pt.positions)
-
-        for _ in range(2):
-            print(f"\nReceiving information of the {len(points)}-th point...")
-            #pt.positions = list(map(lambda x: np.deg2rad(float(x)), input("Enter the point's positions:").split(' ')))
-            #if pt.positions[0] > 17:
-            #    break
-            pt.positions=[]
-            pt.accelerations=[]
-            pt.velocities = list(map(lambda x: np.deg2rad(float(x)), input("Enter the point's velocities:").split(' ')))
-            #pt.accelerations = list(map(lambda x: np.deg2rad(float(x)), input("Enter the point's accelerations:").split(' ')))
-            pt.time_from_start += rospy.Duration(dt)
-            points.append(dcp(pt))
-
-        print(traj)
-        input("press any to continue")
-        moveit_class.display_trajectory(traj)
-        if bool(input("confirm?")):
-            return moveit_class.move_group.execute(traj)
-        else:
-            return False
-    def get_quaternion_from_euler(roll, pitch, yaw):
-        qx = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
-        qy = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
-        qz = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
-        qw = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
-        norm = np.sqrt(qx**2 + qy**2+qz**2+qw**2)
-        qx /= norm
-        qy /= norm
-        qz /= norm
-        qw /= norm
-        return [qx, qy, qz, qw]
-    
+    # collsion control
     def add_camera_box(self, timeout=4):
         box_name = self.box_name
         scene = self.scene
@@ -657,6 +484,7 @@ class MoveitPython(object):
         scene.add_box(box_name, box_pose, size=(0.02, 0.09, 0.09))
         self.box_name = box_name
         return self.wait_for_state_update(box_is_known=True, timeout=timeout)
+
     def add_finger_boxes(self, timeout=4):
         box1_name = self.box_name
         box2_name = self.box_name
@@ -680,6 +508,7 @@ class MoveitPython(object):
         self.box_name = box1_name
         self.box_name = box2_name
         return self.wait_for_state_update(box_is_known=True, timeout=timeout)
+
     def add_jenga_box(self, timeout=4):
         box_name = self.box_name
         scene = self.scene
@@ -748,6 +577,192 @@ class MoveitPython(object):
         return self.wait_for_state_update(
             box_is_attached=False, box_is_known=False, timeout=timeout
         )
+
+    #not usnig now.
+    def go_to_pose_goal(self, orientation, position):
+        # Planning to a Pose Goal using Euler
+        # We can plan a motion for this group to a desired pose for the
+        # end-effector:
+        move_group = self.move_group
+        pose_goal = geometry_msgs.msg.Pose()
+
+        pose_goal.orientation.w = orientation[3]
+        pose_goal.orientation.x = orientation[0]
+        pose_goal.orientation.y = orientation[1]
+        pose_goal.orientation.z = orientation[2]
+
+        pose_goal.position.x = position[0]
+        pose_goal.position.y = position[1]
+        pose_goal.position.z = position[2]
+
+        move_group.set_pose_target(pose_goal)
+
+        is_success, traj, planning_time, error_code = move_group.plan(joints=pose_goal)
+        _msg = "success" if is_success else "failed"
+        rospy.loginfo(f"Planning is [ {_msg} ] (error code : {error_code.val}, planning time : {planning_time:.2f}s)")
+        self.display_trajectory(traj)
+
+        input("\nWait for Enter to execute the plan...")
+        if is_success:
+            rospy.loginfo("Executing the plan")
+            move_group.execute(traj, wait=True)
+
+        # Calling `stop()` ensures that there is no residual movement
+        move_group.stop()
+        # It is always good to clear your targets after planning with poses.
+        # Note: there is no equivalent function for clear_joint_value_targets().
+        move_group.clear_pose_targets()
+
+        # For testing:
+        # Note that since this section of code will not be included in the tutorials
+        # we use the class variable rather than the copied state variable
+        current_pose = self.move_group.get_current_pose().pose
+        print("Current pose state", current_pose)
+        return all_close(pose_goal, current_pose, 0.001)
+    
+    def manual_move(dt, moveit_class):
+        joint_states = moveit_class.move_group.get_current_joint_values()
+        print(joint_states)
+        traj = moveit_msgs.msg.RobotTrajectory()
+        points = traj.joint_trajectory.points
+        traj.joint_trajectory.joint_names = [f"panda_joint{i+1}" for i in range(7)]
+        traj.joint_trajectory.header.frame_id = "panda_link0"
+        pt = trajectory_msgs.msg.JointTrajectoryPoint()
+        pt.positions = list(dcp(joint_states))
+        pt.velocities = [0.0] * 7
+        pt.accelerations = [0.0] * 7
+        pt.time_from_start = rospy.Duration(0.0)
+        points.append(dcp(pt))
+        print("current position:", pt.positions)
+
+        for _ in range(2):
+            print(f"\nReceiving information of the {len(points)}-th point...")
+            #pt.positions = list(map(lambda x: np.deg2rad(float(x)), input("Enter the point's positions:").split(' ')))
+            #if pt.positions[0] > 17:
+            #    break
+            pt.positions=[]
+            pt.accelerations=[]
+            pt.velocities = list(map(lambda x: np.deg2rad(float(x)), input("Enter the point's velocities:").split(' ')))
+            #pt.accelerations = list(map(lambda x: np.deg2rad(float(x)), input("Enter the point's accelerations:").split(' ')))
+            pt.time_from_start += rospy.Duration(dt)
+            points.append(dcp(pt))
+
+        print(traj)
+        input("press any to continue")
+        moveit_class.display_trajectory(traj)
+        if bool(input("confirm?")):
+            return moveit_class.move_group.execute(traj)
+        else:
+            return False
+
+    def get_quaternion_from_euler(roll, pitch, yaw):
+        qx = np.sin(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) - np.cos(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+        qy = np.cos(roll/2) * np.sin(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.cos(pitch/2) * np.sin(yaw/2)
+        qz = np.cos(roll/2) * np.cos(pitch/2) * np.sin(yaw/2) - np.sin(roll/2) * np.sin(pitch/2) * np.cos(yaw/2)
+        qw = np.cos(roll/2) * np.cos(pitch/2) * np.cos(yaw/2) + np.sin(roll/2) * np.sin(pitch/2) * np.sin(yaw/2)
+        norm = np.sqrt(qx**2 + qy**2+qz**2+qw**2)
+        qx /= norm
+        qy /= norm
+        qz /= norm
+        qw /= norm
+        return [qx, qy, qz, qw]
+
+    def go_to_right_state_joint(self):
+        #0 1.57 -1.57
+
+        move_group = self.move_group
+
+        # BEGIN_SUB_TUTORIAL plan_to_joint_state
+        #
+        # Planning to a Joint Goal
+        # ^^^^^^^^^^^^^^^^^^^^^^^^
+        # The Panda's zero configuration is at a `singularity <https://www.quora.com/Robotics-What-is-meant-by-kinematic-singularity>`_, so the first
+        # thing we want to do is move it to a slightly better configuration.
+        # We use the constant `tau = 2*pi <https://en.wikipedia.org/wiki/Turn_(angle)#Tau_proposals>`_ for convenience:
+        # We get the joint values from the group and change some of the values:
+        joint_goal = move_group.get_current_joint_values()
+        print("Current joint state", joint_goal)
+        joint_goal = [0.5814248320904081, 0.32849922433280443, -0.5749167443910467, -2.5296883764860967, -1.4873604605443078, 1.7338714269498154, 0.4507797936718414]
+        print("Goal joint state", joint_goal)
+        # The go command can be called with joint values, poses, or without any
+        # parameters if you have already set the pose or joint target for the group
+        #move_group.go(joint_goal, wait=True)
+
+        is_success, traj, planning_time, error_code = move_group.plan(joints=joint_goal)
+        _msg = "success" if is_success else "failed"
+        rospy.loginfo(f"Planning is [ {_msg} ] (error code : {error_code.val}, planning time : {planning_time:.2f}s)")
+        print(traj)
+        self.display_trajectory(traj)
+
+        input("\nWait for any key to execute the plan...")
+        if is_success:
+            rospy.loginfo("Executing the plan")
+            move_group.execute(traj, wait=True)
+
+        # Calling ``stop()`` ensures that there is no residual movement
+        move_group.stop()
+
+        # END_SUB_TUTORIAL
+
+        # For testing:
+        current_joints = move_group.get_current_joint_values()
+        print("hello Current joint state", current_joints)
+        return all_close(joint_goal, current_joints, 0.001)
+
+    def go_to_back_state_joint(self):
+        # Copy class variables to local variables to make the web tutorials more clear.
+        # In practice, you should use the class variables directly unless you have a good
+        # reason not to.
+        move_group = self.move_group
+
+        # BEGIN_SUB_TUTORIAL plan_to_joint_state
+        #
+        # Planning to a Joint Goal
+        # ^^^^^^^^^^^^^^^^^^^^^^^^
+        # The Panda's zero configuration is at a `singularity <https://www.quora.com/Robotics-What-is-meant-by-kinematic-singularity>`_, so the first
+        # thing we want to do is move it to a slightly better configuration.
+        # We use the constant `tau = 2*pi <https://en.wikipedia.org/wiki/Turn_(angle)#Tau_proposals>`_ for convenience:
+        # We get the joint values from the group and change some of the values:
+        joint_goal = move_group.get_current_joint_values()
+        print("Current joint state", joint_goal)
+        joint_goal = [2.2935093896801315, -0.5357224503223105, 2.136197543855244, -2.468391434871596, 1.5131491402571824, 1.0860143871703416, 1.0879037017179407]
+        print("Goal joint state", joint_goal)
+        # The go command can be called with joint values, poses, or without any
+        # parameters if you have already set the pose or joint target for the group
+        #move_group.go(joint_goal, wait=True)
+
+        is_success, traj, planning_time, error_code = move_group.plan(joints=joint_goal)
+        _msg = "success" if is_success else "failed"
+        rospy.loginfo(f"Planning is [ {_msg} ] (error code : {error_code.val}, planning time : {planning_time:.2f}s)")
+        print(traj)
+        self.display_trajectory(traj)
+
+        input("\nWait for any key to execute the plan...")
+        if is_success:
+            rospy.loginfo("Executing the plan")
+            move_group.execute(traj, wait=True)
+
+        # Calling ``stop()`` ensures that there is no residual movement
+        move_group.stop()
+
+        # END_SUB_TUTORIAL
+
+        # For testing:
+        current_joints = move_group.get_current_joint_values()
+        print("hello Current joint state", current_joints)
+        return all_close(joint_goal, current_joints, 0.001)
+
+    def go_to_back_position(self):
+        orientation = self.get_quaternion_from_euler(1.57, 1.57, 1.57)
+        position = [0.34,-0.4,0.2]
+        self.go_to_pose_goal(orientation, position)
+        return True
+
+    def go_to_right_position(self):
+        orientation = self.get_quaternion_from_euler(0, 1.57, -1.57)
+        position = [0.4,-0.34,0.2]
+        self.go_to_pose_goal(orientation, position)
+        return True
 
 
 
