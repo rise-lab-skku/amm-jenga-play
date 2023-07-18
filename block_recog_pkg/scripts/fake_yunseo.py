@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
-from block_recog.srv import GetWorldCoord, GetWorldCoordRequest, GetWorldCoordResponse, CaptureImage, CaptureImageRequest, CaptureImageResponse
+from block_recog_pkg.srv import GetWorldCoord, GetWorldCoordRequest, GetWorldCoordResponse, CaptureImage, CaptureImageRequest, CaptureImageResponse
 
 rospy.init_node("service_client")
 

@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>custom_description</name>
+  <version>0.1.0</version>
+  <description>custom_description contains URDF files and meshes of customized fr3 robot in RISE lab</description>
+  <maintainer email="mirinae3145@gmail.com">Taeha Shin</maintainer>
+  <license>MIT</license>
+  <author>Franka Emika GmbH</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <exec_depend>xacro</exec_depend>
+  <test_depend>rosunit</test_depend>
+</package>
