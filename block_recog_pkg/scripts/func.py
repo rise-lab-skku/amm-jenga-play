@@ -4,6 +4,7 @@ import glob
 import open3d as o3d
 from matplotlib import pyplot as plt
 import copy
+import rospy
 
 
 def img_masking(img_color, color):
@@ -130,6 +131,7 @@ def get_pointcloud_from_color_depth(color_image, depth_image, intrinsic):
     rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(color_image, depth_image)
     pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd_image, intrinsic)
 
+    rospy.loginfo("----point cloud is generated----")
     return pcd
 
 def combine_pcd(all_pcd):
@@ -153,7 +155,7 @@ def do_ICP(source, target, trans_init):
     # evaluation = o3d.pipelines.registration.evaluate_registration(source, target, threshold, trans_init)
 
     reg_p2p = o3d.pipelines.registration.registration_icp(
-    source, target, 10, trans_init,
+    source, target, 20, trans_init,
     o3d.pipelines.registration.TransformationEstimationPointToPoint(),
     o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=2000))
 

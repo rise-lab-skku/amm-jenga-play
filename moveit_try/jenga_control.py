@@ -716,11 +716,11 @@ def main():
 
             elif command=="test":
                 #move.move_client(0.08)
-                # move.go_to_default()
+                #move.go_to_default()
                 # time.sleep(1)
 
                 # #camera position
-                # move.rpy_goal([pi/2, pi/2, -pi/4],[0.5, -0.2, 0.3])
+                move.rpy_goal([pi/2, pi/2, -pi/2],[0.1, -0.5, 0.2])
 
                 ############### take picture and callib ######################
                 rospy.wait_for_service('CaptureImage')

@@ -22,13 +22,20 @@ colors = colors = ["green", "pink", "yellow", "blue", "violet", "red"]
 
 
 def transform_coordinates(coordinate1, coordinate2, transform_matrix_lst):
+
+    rospy.loginfo("transform_coordinates")
+    rospy.loginfo(f"coordinate1 : {coordinate1}")
     for trans_mat in transform_matrix_lst:
-        coordinate1 = coordinate_transform(coordinate1, trans_mat)
+        coordinate1 = func.coordinate_transform(coordinate1, trans_mat)
+        coordinate1 = coordinate1 * 1000
+
+    rospy.loginfo(f"coordinate1 : {coordinate1}")
 
     for trans_mat in transform_matrix_lst:
-        coordinate2 = coordinate_transform(coordinate2, trans_mat)
+        coordinate2 = func.coordinate_transform(coordinate2, trans_mat)
+        coordinate2 = coordinate2 * 1000
 
-    return coordinate1, coordinate2
+    return coordinate1 / 1000, coordinate2 / 1000
 
 
 class CoordinateServer:
@@ -106,13 +113,17 @@ class CoordinateServer:
         listener = tf.TransformListener()
         rospy.logwarn("Waiting for transform between [panda_link0] and [rgb_camera_link]")
         listener.waitForTransform("panda_link0", "rgb_camera_link", rospy.Time(0), rospy.Duration(5.0))
+        # listener.waitForTransform("rgb_camera_link", "panda_link0", rospy.Time(0), rospy.Duration(5.0))
         try:
             # lookupTransform('target', 'source', Time)
             (trans_cam_to_world, rot_cam_to_world) = listener.lookupTransform("panda_link0", "rgb_camera_link", rospy.Time(0))
+            # (trans_cam_to_world, rot_cam_to_world) = listener.lookupTransform("rgb_camera_link", "panda_link0",  rospy.Time(0))
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
             raise
 
         self.cam_to_world_transform_matrix = func.transform_mat_from_trans_rot(trans_cam_to_world, rot_cam_to_world)
+
+        rospy.loginfo(f"self.cam_to_world_transform_matrix : {self.cam_to_world_transform_matrix}")
 
         self.transform_matrix_lst = [self.mesh_to_camera_matrix, self.cam_to_world_transform_matrix]
 
@@ -192,6 +203,8 @@ class CoordinateServer:
                 blocks_pcd.append(pcd)
                 all_pcd.append(pcd)
 
+                rospy.loginfo(f"pcd info : {pcd}")
+
             blocks_pcd_by_color.append(blocks_pcd)
 
         pcd_combined = func.combine_pcd(all_pcd)
@@ -199,19 +212,23 @@ class CoordinateServer:
         return pcd_combined, blocks_pcd_by_color
 
     def transform_matrix_mesh_to_camera(self, pcd_combined):
-        # mesh_tower = o3d.io.read_triangle_mesh("/home/shs/catkin_ws/src/block_recog/mesh/jenga_tower_side_xy.stl")
-        # mesh_tower.compute_vertex_normals()
+        mesh_tower = o3d.io.read_triangle_mesh("/home/shs/catkin_ws/src/block_recog/mesh/jenga_tower_side_xy.stl")
+        mesh_tower.compute_vertex_normals()
 
         mesh_tower = self.mesh_tower
 
         pcd_target = mesh_tower.sample_points_uniformly(number_of_points=len(pcd_combined.points))
+        rospy.loginfo(f"mesh info : [{pcd_target}]")
+        rospy.loginfo("Start ICP")
 
         source, target, move = func.prepare_icp(pcd_combined, pcd_target)
 
-        trans_init = np.asarray([[0, 0, -1, move[0]], [-1, 0, 0, move[1]], [0, 1, 0, move[2]], [0, 0, 0, 1]])
+        trans_init = np.asarray([[0, 0, -1, move[0]], [1, 0, 0, move[1]], [0, -1, 0, move[2]], [0, 0, 0, 1]])
         trans_matrix = func.do_ICP(source, target, trans_init)
 
         camera_to_mesh_matrix = trans_matrix
+
+        rospy.loginfo(f"camera_to_mesh_matrix: {camera_to_mesh_matrix}")
 
         mesh_to_camera_matrix = np.linalg.inv(trans_matrix)
 
@@ -244,7 +261,7 @@ class CoordinateServer:
 
         is_success = self.wait_image(time_threshold=10.0)
 
-        if is_success:
+        if is_success is not True:
             resp.success = False
             return resp
 
