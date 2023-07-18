@@ -1,0 +1,11 @@
+moveit_setup_assistant_config:
+  URDF:
+    package: custom_description
+    relative_path: robots/fr3.urdf.xacro
+    xacro_args: ""
+  SRDF:
+    relative_path: config/fr3.srdf
+  CONFIG:
+    author_name: Taeha Shin
+    author_email: mirinae3145@g.skku.edu
+    generated_timestamp: 1689684151
