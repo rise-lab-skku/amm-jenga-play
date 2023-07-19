@@ -86,7 +86,7 @@ class MoveitPython(object):
         # arm planning group.
         # This interface can be used to plan and execute motions:
         #group_name = "panda_arm" to make TCP as Panda_manipulaotor new fingert tip
-        self.group_name = "panda_manipulator2"
+        self.group_name = "panda_manipulator"
         move_group = moveit_commander.MoveGroupCommander(self.group_name)
         #print(dir(move_group))
         #print(move_group.get_goal_joint_tolerance())
@@ -144,6 +144,12 @@ class MoveitPython(object):
     def change_tcp(self, method=None, group_name=None):
         robot = moveit_commander.RobotCommander()
         #print("hello",self.group_name)
+
+        if method:
+            method = "push"
+        else:
+            method = "grasp"
+            
         if method is None:
             if group_name is None:
                 if self.group_name == "panda_manipulator2":
@@ -245,7 +251,7 @@ class MoveitPython(object):
     def two_points_to_rpy(self, target_point, temp_point):
         dx = target_point[0] - temp_point[0]
         dy = target_point[1] - temp_point[1]
-        if dx <= 0.0001:
+        if abs(dx) <= 0.0001:
             direction = 0
         else:
             direction = atan(dy/dx)-pi/2
@@ -716,11 +722,11 @@ def main():
 
             elif command=="test":
                 #move.move_client(0.08)
-                #move.go_to_default()
+                # move.go_to_default()
                 # time.sleep(1)
 
                 # #camera position
-                move.rpy_goal([pi/2, pi/2, -pi/2],[0.1, -0.5, 0.2])
+                move.rpy_goal([pi/2, pi/2, pi/2],[0., -0.4, 0.2])
 
                 ############### take picture and callib ######################
                 rospy.wait_for_service('CaptureImage')
@@ -747,17 +753,17 @@ def main():
 
                 response = get_coord(request.target_block)
 
-                jenga_coordinate1_x = response.center_x
-                jenga_coordinate1_y = response.center_y
-                jenga_coordinate1_z = response.center_z
-                jenga_coordinate2_x = response.target_x
-                jenga_coordinate2_y = response.target_y
-                jenga_coordinate2_z = response.target_z
-                # print(response.center_y)
-                # print(response.center_z)
-                # print(response.target_x)
-                # print(response.target_y)
-                # print(response.target_z)
+                jenga_coordinate1_x = copy.deepcopy(copy.deepcopy(response.center_x))
+                jenga_coordinate1_y = copy.deepcopy(copy.deepcopy(response.center_y))
+                jenga_coordinate1_z = copy.deepcopy(copy.deepcopy(response.center_z))
+                jenga_coordinate2_x = copy.deepcopy(response.target_x)
+                jenga_coordinate2_y = copy.deepcopy(response.target_y)
+                jenga_coordinate2_z = copy.deepcopy(response.target_z)
+                # print(copy.deepcopy(response.center_y))
+                # print(copy.deepcopy(response.center_z))
+                # print(copy.deepcopy(response.target_x))
+                # print(copy.deepcopy(response.target_y))
+                # print(copy.deepcopy(response.target_z))
 
                 # INIT 2
                 rospy.wait_for_service('GetWorldCoordinates')
@@ -770,37 +776,56 @@ def main():
 
                 response = get_coord(request.target_block)
 
-                jenga_coordinate3_x = response.center_x
-                jenga_coordinate3_y = response.center_y
-                jenga_coordinate3_z = response.center_z
-                jenga_coordinate4_x = response.target_x
-                jenga_coordinate4_y = response.target_y
-                jenga_coordinate4_z = response.target_z
+                jenga_coordinate3_x = copy.deepcopy(response.center_x)
+                jenga_coordinate3_y = copy.deepcopy(response.center_y)
+                jenga_coordinate3_z = copy.deepcopy(response.center_z)
+                jenga_coordinate4_x = copy.deepcopy(response.target_x)
+                jenga_coordinate4_y = copy.deepcopy(response.target_y)
+                jenga_coordinate4_z = copy.deepcopy(response.target_z)
+
+                # rospy.loginfo(jenga_coordinate1_x)
+                # rospy.loginfo(jenga_coordinate1_y)
+                # rospy.loginfo(jenga_coordinate1_z)
+
+                # marker로 좌표 check
+                # marker_pub = rospy.Publisher('/visualization_marker', Marker, queue_size=10)
+                # marker = Marker()
+
+                # marker.header.frame_id = "panda_link0"
+                # marker.header.stamp = rospy.Time.now()
+                # marker.type = marker.SPHERE
+                # marker.action = marker.ADD
+                # marker.scale.x = 0.01
+                # marker.scale.y = 0.01
+                # marker.scale.z = 0.01
+                # marker.color.a = 1.0
+                # marker.color.r = 1.0
+                # marker.color.g = 0.0
+                # marker.color.b = 0.0
+                # marker.pose.position.x = jenga_coordinate1_x
+                # marker.pose.position.y = jenga_coordinate1_y
+                # marker.pose.position.z = jenga_coordinate1_z
+                # marker_pub.publish(marker)
+                # rospy.sleep(1)
 
                 rospy.loginfo(jenga_coordinate1_x)
                 rospy.loginfo(jenga_coordinate1_y)
                 rospy.loginfo(jenga_coordinate1_z)
 
-                # marker로 좌표 check
-                marker_pub = rospy.Publisher('/visualization_marker', Marker, queue_size=10)
-                marker = Marker()
+                rospy.loginfo(jenga_coordinate2_x)
+                rospy.loginfo(jenga_coordinate2_y)
+                rospy.loginfo(jenga_coordinate2_z)
 
-                marker.header.frame_id = "panda_link0"
-                marker.header.stamp = rospy.Time.now()
-                marker.type = marker.SPHERE
-                marker.action = marker.ADD
-                marker.scale.x = 0.01
-                marker.scale.y = 0.01
-                marker.scale.z = 0.01
-                marker.color.a = 1.0
-                marker.color.r = 1.0
-                marker.color.g = 0.0
-                marker.color.b = 0.0
-                marker.pose.position.x = jenga_coordinate1_x
-                marker.pose.position.y = jenga_coordinate1_y
-                marker.pose.position.z = jenga_coordinate1_z
-                marker_pub.publish(marker)
-                rospy.sleep(1)
+                rospy.loginfo(jenga_coordinate3_x)
+                rospy.loginfo(jenga_coordinate3_y)
+                rospy.loginfo(jenga_coordinate3_z)
+
+                rospy.loginfo(jenga_coordinate4_x)
+                rospy.loginfo(jenga_coordinate4_y)
+                rospy.loginfo(jenga_coordinate4_z)
+
+
+
 
                 ###############give me 4 poinst to make jenga################
                 points = [[jenga_coordinate1_x, jenga_coordinate1_y, jenga_coordinate1_z],[jenga_coordinate2_x, jenga_coordinate2_y, jenga_coordinate2_z],[jenga_coordinate3_x, jenga_coordinate3_y, jenga_coordinate3_z],[jenga_coordinate4_x, jenga_coordinate4_y, jenga_coordinate4_z]]
@@ -827,21 +852,30 @@ def main():
                     response = get_coord(request)
 
                     print(response.success)
-                    print(response.center_x)
-                    print(response.center_y)
-                    print(response.center_z)
-                    print(response.target_x)
-                    print(response.target_y)
-                    print(response.target_z)
+                    print(copy.deepcopy(response.center_x))
+                    print(copy.deepcopy(response.center_y))
+                    print(copy.deepcopy(response.center_z))
+                    print(copy.deepcopy(response.target_x))
+                    print(copy.deepcopy(response.target_y))
+                    print(copy.deepcopy(response.target_z))
                     print(response.push)
+
+                    # copy.deepcopy(response.success)
+                    # (copy.deepcopy(response.center_x))
+                    # (copy.deepcopy(response.center_y))
+                    # (copy.deepcopy(response.center_z))
+                    # (copy.deepcopy(response.target_x))
+                    # (copy.deepcopy(response.target_y))
+                    # (copy.deepcopy(response.target_z))
+                    # copy.deepcopy(response.push)
 
 
 
 
 
                     # vision result
-                    target_point = [response.center_x,response.center_y,response.center_z]
-                    temp_point = [response.target_x,response.target_y,response.target_z]
+                    target_point = [copy.deepcopy(response.center_x),copy.deepcopy(response.center_y),copy.deepcopy(response.center_z)]
+                    temp_point = [copy.deepcopy(response.target_x),copy.deepcopy(response.target_y),copy.deepcopy(response.target_z)]
                     method = response.push #true-push fasle-pull
                     ###############################################################
                     move.jenga_extract(target_point,temp_point,method)

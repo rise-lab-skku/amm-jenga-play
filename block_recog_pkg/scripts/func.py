@@ -18,13 +18,13 @@ def img_masking(img_color, color):
     upper_red2 = np.array([179,255,255])
 
     # PINK
-    lower_pink1 = np.array([0, 70, 80])
-    upper_pink1 = np.array([10, 130, 255])
-    lower_pink2 = np.array([150,70,80])
+    lower_pink1 = np.array([0, 40, 80])
+    upper_pink1 = np.array([3, 130, 255])
+    lower_pink2 = np.array([150,40,80])
     upper_pink2 = np.array([179,130,255])
 
     # GREEN
-    lower_green = (70-20, 50, 50)
+    lower_green = (70-20, 100, 100)
     upper_green = (70+15, 255, 255)
 
     # YELLOW
@@ -128,7 +128,7 @@ def get_pointcloud_from_color_depth(color_image, depth_image, intrinsic):
     elif isinstance(depth_image, np.ndarray):
         depth_image = o3d.geometry.Image(depth_image)
 
-    rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(color_image, depth_image)
+    rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(color_image, depth_image, depth_scale=1, depth_trunc=3000.0, convert_rgb_to_intensity=False)
     pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd_image, intrinsic)
 
     rospy.loginfo("----point cloud is generated----")
@@ -141,26 +141,38 @@ def combine_pcd(all_pcd):
 
     return pcd_combined
 
+
 def prepare_icp(source, target):
     source_tmp = copy.deepcopy(source)
     target_tmp = copy.deepcopy(target)
 
-    # move the source pcd to do icp
-    move = np.array(target_tmp.get_center() - source_tmp.get_center())
+    initial_transform = np.asarray([[0, 0, -1, 0],
+                                    [-1, 0, 0, 0],
+                                    [0, 1, 0, 0],
+                                    [0, 0, 0, 1]])
 
+    source_tmp.transform(initial_transform)
+    # move the source pcd to do icp
+    move = np.array(target_tmp.get_oriented_bounding_box().get_center() - source_tmp.get_oriented_bounding_box().get_center())
+
+    source_tmp.transform(np.linalg.inv(initial_transform))
+    # o3d.visualization.draw_geometries([source_tmp, target_tmp])
     return source_tmp, target_tmp, move
 
 def do_ICP(source, target, trans_init):
 
     # evaluation = o3d.pipelines.registration.evaluate_registration(source, target, threshold, trans_init)
-
+    print(o3d.pipelines.registration.evaluate_registration(source, target, 10, trans_init))
     reg_p2p = o3d.pipelines.registration.registration_icp(
-    source, target, 20, trans_init,
-    o3d.pipelines.registration.TransformationEstimationPointToPoint(),
-    o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=2000))
+        source, target, 10, trans_init,
+        o3d.pipelines.registration.TransformationEstimationPointToPoint(),
+        o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=2000))
 
-    transform_matrix = reg_p2p.transformation
-
+    transform_matrix = copy.deepcopy(reg_p2p.transformation)
+    transform_matrix[0,3] /= 1000
+    transform_matrix[1,3] /= 1000
+    transform_matrix[2,3] /= 1000
+    print(transform_matrix)
     return transform_matrix
 
 def transform_blocks(pcd, icp_transform):
@@ -182,7 +194,14 @@ def get_coordinate(target_block, blocks_pcd_by_color, trans):
             if idx != int(target_block_label):
                 continue
 
-            pcd_new = transform_blocks(pcd, trans)
+            new_trans = copy.deepcopy(trans)
+            new_trans[0,3]*=1000
+            new_trans[1,3]*=1000
+            new_trans[2,3]*=1000
+
+            pcd_new = transform_blocks(pcd, new_trans)
+
+
 
 
             box_extent = pcd_new.get_axis_aligned_bounding_box().get_extent()
@@ -274,8 +293,8 @@ def get_coordinate(target_block, blocks_pcd_by_color, trans):
 
                 return None, None, None
 
-    center_coordinate = np.array([cen_x, cen_y, cen_z])
-    target_coordinate = np.array([target_x, target_y, target_z])
+    center_coordinate = np.array([cen_x, cen_y, cen_z]) / 1000
+    target_coordinate = np.array([target_x, target_y, target_z]) / 1000
 
     return center_coordinate, target_coordinate, push
 
@@ -290,9 +309,15 @@ def coordinate_transform(coordinate, transform_matrix):
 
 def transform_mat_from_trans_rot(trans, rot):
     e1, e2, e3, e4 = rot
-    trans_matrix = np.array([[1-2*(e2**2)-2*(e3**2), 2*(e1*e2-e3*e4), 2*(e1*e3+e2*e4), trans[0]],
-                                [2*(e1*e2+e3*e4), 1-2*(e1**2)-2*(e3**2), 2*(e2*e3-e1*e4), trans[1]],
-                                [2*(e1*e3-e2*e4), 2*(e2*e3+e1*e4), 1-2*(e1**2)-2*(e2**2), trans[2]],
-                                [0, 0, 0, 1]])
-
+    trans_matrix = np.array([[1-2*(e2**2)-2*(e3**2), 2*(e1*e2-e3*e4), 2*(e1*e3+e2*e4), trans[0]],   [2*(e1*e2+e3*e4), 1-2*(e1**2)-2*(e3**2), 2*(e2*e3-e1*e4), trans[1]],[2*(e1*e3-e2*e4), 2*(e2*e3+e1*e4), 1-2*(e1**2)-2*(e2**2), trans[2]],[0, 0, 0, 1]])
     return trans_matrix
+
+def draw_registration_result(source, target, transformation):
+    mesh_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(
+    size=50, origin=[0, 0, 0])
+    source_temp = copy.deepcopy(source)
+    target_temp = copy.deepcopy(target)
+    # source_temp.paint_uniform_color([1, 0.706, 0])
+    # target_temp.paint_uniform_color([0, 0.651, 0.929])
+    source_temp.transform(transformation)
+    # o3d.visualization.draw_geometries([source_temp, target_temp, mesh_frame])

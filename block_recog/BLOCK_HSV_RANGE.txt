@@ -1,18 +1,18 @@
 # RED
-lower_red1 = np.array([0, 120, 50])
-upper_red1 = np.array([20, 255, 255])
-lower_red2 = np.array([160,120,50])
+lower_red1 = np.array([0, 130, 50])
+upper_red1 = np.array([15, 255, 255])
+lower_red2 = np.array([160,130,50])
 upper_red2 = np.array([179,255,255])
 
 # PINK
-lower_pink1 = np.array([0, 75, 100])
-upper_pink1 = np.array([10, 120, 255])
-lower_pink2 = np.array([150,75,100])
-upper_pink2 = np.array([179,120,255])
+lower_pink1 = np.array([0, 55, 80])
+upper_pink1 = np.array([10, 130, 255])
+lower_pink2 = np.array([150,55,80])
+upper_pink2 = np.array([179,130,255])
 
 # GREEN
-lower_green = (70-20, 60, 60)
-upper_green = (70+20, 255, 255)
+lower_green = (70-20, 50, 50)
+upper_green = (70+15, 255, 255)
 
 # YELLOW
 lower_yellow = (30-10, 80, 80)
@@ -20,8 +20,8 @@ upper_yellow = (30+10, 255, 255)
 
 # BLUE
 lower_blue = (100-10, 100, 100)
-upper_blue = (100+10, 255, 150)
+upper_blue = (100+9, 255, 255)
 
 # VIOLET
-lower_violet = (130-20, 30, 30)
+lower_violet = (130-20, 60, 60)
 upper_violet = (130+20, 255, 255)

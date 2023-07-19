@@ -3,6 +3,7 @@ import rospy
 from block_recog_pkg.srv import (
     GetWorldCoord,
     GetWorldCoordResponse,
+    GetWorldCoordRequest,
     CaptureImage,
     CaptureImageResponse,
 )
@@ -15,6 +16,8 @@ import func
 
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
+import pickle
+import copy
 
 bridge = CvBridge()
 
@@ -27,30 +30,27 @@ def transform_coordinates(coordinate1, coordinate2, transform_matrix_lst):
     rospy.loginfo(f"coordinate1 : {coordinate1}")
     for trans_mat in transform_matrix_lst:
         coordinate1 = func.coordinate_transform(coordinate1, trans_mat)
-        coordinate1 = coordinate1 * 1000
 
-    rospy.loginfo(f"coordinate1 : {coordinate1}")
+        rospy.loginfo(f"coordinate1 : {coordinate1}")
 
     for trans_mat in transform_matrix_lst:
         coordinate2 = func.coordinate_transform(coordinate2, trans_mat)
-        coordinate2 = coordinate2 * 1000
 
-    return coordinate1 / 1000, coordinate2 / 1000
+    return coordinate1, coordinate2
 
 
 class CoordinateServer:
     def __init__(self):
         self.mesh_tower = o3d.io.read_triangle_mesh(
-            "/home/hr/Desktop/urp2/amm-jenga-play/block_recog/mesh/jenga_tower_side_xy.stl"
-        )
+            "/home/hr/Desktop/urp2/amm-jenga-play/block_recog/mesh/jenga_tower_side_xy.stl")
         self.mesh_tower.compute_vertex_normals()
 
-        jenga_first_coord1 = np.array([37.5, 37.5, 0])
-        jenga_first_coord2 = np.array([37.5, -37.5, 0])
-        jenga_first_coord3 = np.array([-37.5, -37.5, 0])
-        jenga_first_coord4 = np.array([-37.5, 37.5, 0])
+        # jenga_first_coord1 = np.array([0.0375, 0.0375, 0])
+        # jenga_first_coord2 = np.array([0.0375, -0.0375, 0])
+        # jenga_first_coord3 = np.array([-0.0375, -0.0375, 0])
+        # jenga_first_coord4 = np.array([-0.0375, 0.0375, 0])
 
-        self.jenga_first_coord = [jenga_first_coord1, jenga_first_coord2, jenga_first_coord3, jenga_first_coord4]
+        # self.jenga_first_coord = [jenga_first_coord1, jenga_first_coord2, jenga_first_coord3, jenga_first_coord4]
 
         self.tower_transform_initialized = False
         # -------------------------------------------------------------------------
@@ -60,14 +60,19 @@ class CoordinateServer:
 
         # with open('/home/shs/catkin_ws/src/block_recog/img/rgb.p', 'rb') as rgb:
         #     img_color = pickle.load(rgb)
-
         self.img_depth = None
         self.img_color = None
+
+
+        # with open('/home/hr/Desktop/rgb.p', 'rb') as rgb:
+        #     self.img_color = pickle.load(rgb, encoding="bgr8")
+        # with open('/home/hr/Desktop/dep.p', 'rb') as dep:
+        #     self.img_depth = pickle.load(dep, encoding="16UC1")
 
         self.ready_to_capture_image = False
         self.capture_once = 0
 
-        # rospy.logwarn("Define subscribers")
+        rospy.logwarn("Define subscribers")
         rospy.Subscriber("/rgb/image_raw", Image, self.image_callback1)
         rospy.Subscriber("/depth_to_rgb/image_raw", Image, self.image_callback2)
 
@@ -98,15 +103,17 @@ class CoordinateServer:
         # tower_pcd = get_pointcloud_from_color_depth(color_image=tower_color, depth_image=masked_depth, intrinsic=intrinsic)
 
         # --------------------------------------------------------------------------
-        pcd_combined, self.block_pcd_by_color = self.build_clean_tower_pcd_from_blocks(
+        self.pcd_combined, self.block_pcd_by_color = self.build_clean_tower_pcd_from_blocks(
             blocks_mask_by_color, tower_color, self.img_depth
         )
+        # o3d.visualization.draw_geometries([self.pcd_combined])
 
         rospy.loginfo("self.block_pcd_by_color")
         # --------------------------------------------------------------------------
 
-        self.camera_to_mesh_matrix, self.mesh_to_camera_matrix = self.transform_matrix_mesh_to_camera(pcd_combined)
+        self.trans_matrix = self.transform_matrix_mesh_to_camera(self.pcd_combined)
 
+            # rospy.logwarn(f"Dept
         # --------------------------------------------------------------------------
 
         # Wait for lookupTransform to become available
@@ -125,12 +132,13 @@ class CoordinateServer:
 
         rospy.loginfo(f"self.cam_to_world_transform_matrix : {self.cam_to_world_transform_matrix}")
 
-        self.transform_matrix_lst = [self.mesh_to_camera_matrix, self.cam_to_world_transform_matrix]
+        self.transform_matrix_lst = [self.trans_matrix, self.cam_to_world_transform_matrix]
 
         self.tower_transform_initialized = True
 
     def capture_flag(self, request):
         rospy.loginfo("Service CaptureImage")
+        print('capture_flag')
 
         resp = CaptureImageResponse()
 
@@ -140,6 +148,7 @@ class CoordinateServer:
 
         self.ready_to_capture_image = True
         is_success = self.wait_image(time_threshold=10)
+        is_success = True
 
         if is_success:
             self.find_initial_tower_transform()
@@ -155,6 +164,8 @@ class CoordinateServer:
         if self.img_color is None and self.ready_to_capture_image:
             self.img_color = bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
             rospy.logwarn(f"RGB image captured (self.img_color.shape: {self.img_color.shape}))")
+        # with open('/home/hr/Desktop/rgb.p', 'rb') as rgb:
+        #     self.img_color = pickle.load(rgb, encoding="bgr8")
         # Save pickle
         # with open('/home/shs/catkin_ws/src/block_recog/img/rgb.p', 'wb') as rgb:
         #     pickle.dump(img_color, rgb)
@@ -164,6 +175,8 @@ class CoordinateServer:
         if self.img_depth is None and self.ready_to_capture_image:
             self.img_depth = bridge.imgmsg_to_cv2(msg, desired_encoding="16UC1")
             rospy.logwarn(f"Depth image captured (self.img_depth.shape: {self.img_depth.shape}))")
+        # with open('/home/hr/Desktop/dep.p', 'rb') as dep:
+        #     self.image_depth = pickle.load(dep, encoding="16UC1")
         # Save pickle
         # with open('/home/shs/catkin_ws/src/block_recog/img/dep.p', 'wb') as dep:
         #     pickle.dump(img_depth, dep)
@@ -212,27 +225,28 @@ class CoordinateServer:
         return pcd_combined, blocks_pcd_by_color
 
     def transform_matrix_mesh_to_camera(self, pcd_combined):
-        mesh_tower = o3d.io.read_triangle_mesh("/home/shs/catkin_ws/src/block_recog/mesh/jenga_tower_side_xy.stl")
-        mesh_tower.compute_vertex_normals()
+        # mesh_tower = o3d.io.read_triangle_mesh("/home/hr/Desktop/urp2/amm-jenga-play/block_recog/mesh/jenga_tower_side_xy.stl")
+        # mesh_tower.compute_vertex_normals()
 
-        mesh_tower = self.mesh_tower
-
-        pcd_target = mesh_tower.sample_points_uniformly(number_of_points=len(pcd_combined.points))
+        pcd_c = copy.deepcopy(pcd_combined)
+        pcd_target = copy.deepcopy(self.mesh_tower.sample_points_uniformly(number_of_points=len(pcd_c.points)))
         rospy.loginfo(f"mesh info : [{pcd_target}]")
         rospy.loginfo("Start ICP")
 
-        source, target, move = func.prepare_icp(pcd_combined, pcd_target)
+        source, target, move = copy.deepcopy(func.prepare_icp(pcd_c, pcd_target))
+        print(move)
 
-        trans_init = np.asarray([[0, 0, -1, move[0]], [1, 0, 0, move[1]], [0, -1, 0, move[2]], [0, 0, 0, 1]])
+        trans_init = np.asarray([[0, 0, -1, move[0]], [-1, 0, 0, move[1]], [0, 1, 0, move[2]], [0, 0, 0, 1]])
         trans_matrix = func.do_ICP(source, target, trans_init)
 
-        camera_to_mesh_matrix = trans_matrix
+        self.camera_to_mesh_matrix = trans_matrix
 
-        rospy.loginfo(f"camera_to_mesh_matrix: {camera_to_mesh_matrix}")
+        rospy.loginfo(f"camera_to_mesh_matrix: {trans_matrix}")
 
-        mesh_to_camera_matrix = np.linalg.inv(trans_matrix)
+        # mesh_to_camera_matrix = np.linalg.inv(trans_matrix)
+        # func.draw_registration_result(source, target, trans_matrix)
 
-        return camera_to_mesh_matrix, mesh_to_camera_matrix
+        return np.linalg.inv(trans_matrix)   #camera_to_mesh_matrix, mesh_to_camera_matrix
 
     def wait_image(self, time_threshold=10.0):
         rospy.logwarn(f"Wait .... (limit: {time_threshold} secs)")
@@ -248,7 +262,6 @@ class CoordinateServer:
         return False
 
     def GetWorldCoordinates(self, request):
-        print('hello world')
 
         rospy.loginfo(f"Service GetWorldCoordinates {request.target_block}")
 
@@ -256,10 +269,12 @@ class CoordinateServer:
         resp.success = True
 
         if self.tower_transform_initialized is not True:
+            print('false')
             resp.success = False
             return resp
 
-        is_success = self.wait_image(time_threshold=10.0)
+        # is_success = self.wait_image(time_threshold=10.0)
+        is_success = True
 
         if is_success is not True:
             resp.success = False
@@ -270,12 +285,13 @@ class CoordinateServer:
 
         if target_block_color == "init":
             if int(target_block_label) == 1:
-                coordinate1 = np.array([37.5, 37.5, 0])
-                coordinate2 = np.array([37.5, -37.5, 0])
+                print('true')
+                coordinate1 = np.array([0.0375, 0.0375, 0])
+                coordinate2 = np.array([0.0375, -0.0375, 0])
                 push = False
             if int(target_block_label) == 2:
-                coordinate1 = np.array([-37.5, 37.5, 0])
-                coordinate2 = np.array([-37.5, -37.5, 0])
+                coordinate1 = np.array([-0.0375, 0.0375, 0])
+                coordinate2 = np.array([-0.0375, -0.0375, 0])
                 push = False
 
         else:
@@ -284,7 +300,7 @@ class CoordinateServer:
             coordinate1, coordinate2, push = func.get_coordinate(
                 request.target_block, blocks_pcd_by_color, self.camera_to_mesh_matrix
             )
-
+        print('hello world')
         coordinate1, coordinate2 = transform_coordinates(coordinate1, coordinate2, self.transform_matrix_lst)
 
         resp.center_x = coordinate1[0]
@@ -301,4 +317,8 @@ class CoordinateServer:
 if __name__ == "__main__":
     rospy.init_node("service_server_node")  # 노드 초기화
     coordinate_server = CoordinateServer()
+    # request = GetWorldCoordRequest()
+    # request.target_block = "init 1"
+    # coordinate_server.find_initial_tower_transform()
+    # coordinate_server.GetWorldCoordinates(request)
     rospy.spin()
