@@ -4,7 +4,7 @@
     <xacro:include filename="$(find custom_description)/robots/custom_hand.xacro"/>
 
     <xacro:arg name="arm_id" default="panda"/>
-    <xacro:arg name="tcp_xyz" default="0 0 0.1034"/>
+    <xacro:arg name="tcp_xyz" default="0 0 0.0934"/>
     <xacro:arg name="tcp_rpy" default="0 0 0"/>
     <xacro:arg name="tcp2_xyz" default="0 0 0.1974"/>
     <xacro:arg name="tcp2_rpy" default="0 0 0"/>

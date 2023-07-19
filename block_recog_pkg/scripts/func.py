@@ -12,23 +12,23 @@ def img_masking(img_color, color):
     img_hsv = cv2.cvtColor(img_color, cv2.COLOR_BGR2HSV)
 
     # RED
-    lower_red1 = np.array([0, 130, 50])
+    lower_red1 = np.array([0, 100, 50])
     upper_red1 = np.array([15, 255, 255])
-    lower_red2 = np.array([160,130,50])
+    lower_red2 = np.array([160,100,50])
     upper_red2 = np.array([179,255,255])
 
     # PINK
-    lower_pink1 = np.array([0, 40, 80])
-    upper_pink1 = np.array([3, 130, 255])
-    lower_pink2 = np.array([150,40,80])
-    upper_pink2 = np.array([179,130,255])
+    lower_pink1 = np.array([0, 15, 200])
+    upper_pink1 = np.array([5, 90, 255])
+    lower_pink2 = np.array([150,15,200])
+    upper_pink2 = np.array([179,80,255])
 
     # GREEN
     lower_green = (70-20, 100, 100)
     upper_green = (70+15, 255, 255)
 
     # YELLOW
-    lower_yellow = (30-10, 80, 80)
+    lower_yellow = (30-10, 60, 120)
     upper_yellow = (30+10, 255, 255)
 
     # BLUE
@@ -37,7 +37,7 @@ def img_masking(img_color, color):
 
     # VIOLET
     lower_violet = (130-20, 60, 60)
-    upper_violet = (130+20, 255, 255)
+    upper_violet = (130+30, 120, 130)
 
     if color == 'pink' or color =='red':
         if color == 'pink':
@@ -81,8 +81,8 @@ def img_masking(img_color, color):
         img_mask_color = cv2.inRange(img_hsv, lower_color, upper_color) # 범위내의 픽셀들은 흰색, 나머지 검은색
 
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3,3))
-        erosion_image_color = cv2.erode(img_mask_color, kernel, iterations=2)  #// make erosion image
-        img_mask_color = cv2.dilate(erosion_image_color, kernel, iterations=2)  #// make dilation image
+        erosion_image_color = cv2.erode(img_mask_color, kernel, iterations=1)  #// make erosion image
+        img_mask_color = cv2.dilate(erosion_image_color, kernel, iterations=1)  #// make dilation image
 
         # 바이너리 이미지를 마스크로 사용하여 원본이미지에서 범위값에 해당하는 영상부분을 획득
         img_result_color = cv2.bitwise_and(img_color, img_color, mask = img_mask_color)
@@ -104,7 +104,7 @@ def img_masking(img_color, color):
         block_color = cv2.bitwise_and(img_color, img_color, mask = block_mask)
 
         # 노이즈 제거
-        if area < 700:
+        if area < 200:
             continue
 
 
@@ -224,7 +224,7 @@ def get_coordinate(target_block, blocks_pcd_by_color, trans):
                 cen_y = y_mean #- 75/2
                 cen_z = z_mean
 
-                target_x = cen_x + 50
+                target_x = cen_x + 120
                 target_y = cen_y
                 target_z = cen_z
 
@@ -237,7 +237,7 @@ def get_coordinate(target_block, blocks_pcd_by_color, trans):
                 cen_z = z_mean
 
                 target_x = cen_x
-                target_y = cen_y + 50
+                target_y = cen_y + 120
                 target_z = cen_z
 
             elif abs(center_coordinate[0]) < 10 and box_extent [1] < 15:
@@ -249,7 +249,7 @@ def get_coordinate(target_block, blocks_pcd_by_color, trans):
                 cen_z = z_mean
 
                 target_x = cen_x
-                target_y = cen_y + 50
+                target_y = cen_y + 120
                 target_z = cen_z
 
             elif abs(center_coordinate[1]) < 10 and box_extent [0] < 15:
@@ -260,7 +260,7 @@ def get_coordinate(target_block, blocks_pcd_by_color, trans):
                 cen_y = y_mean# - 25/2
                 cen_z = z_mean
 
-                target_x = cen_x + 50
+                target_x = cen_x + 120
                 target_y = cen_y
                 target_z = cen_z
 
@@ -272,7 +272,7 @@ def get_coordinate(target_block, blocks_pcd_by_color, trans):
                 cen_y = y_mean - 75/2
                 cen_z = z_mean
 
-                target_x = cen_x - 50
+                target_x = cen_x - 120
                 target_y = cen_y
                 target_z = cen_z
 
@@ -285,7 +285,7 @@ def get_coordinate(target_block, blocks_pcd_by_color, trans):
                 cen_z = z_mean
 
                 target_x = cen_x
-                target_y = cen_y - 50
+                target_y = cen_y - 120
                 target_z = cen_z
 
             else:

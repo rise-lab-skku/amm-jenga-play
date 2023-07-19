@@ -19,6 +19,9 @@ joint_limits:
     has_acceleration_limits: false
     max_acceleration: 0
   fr3_joint3:
+    has_position_limits: true
+    max_position: 2.8
+    min_position: -2.8
     has_velocity_limits: true
     max_velocity: 1.5
     has_acceleration_limits: false

@@ -149,7 +149,7 @@ class MoveitPython(object):
             method = "push"
         else:
             method = "grasp"
-            
+
         if method is None:
             if group_name is None:
                 if self.group_name == "panda_manipulator2":
@@ -217,7 +217,7 @@ class MoveitPython(object):
         move_group = self.move_group
         end_effetor = move_group.get_end_effector_link()
         print(end_effetor)
-        print(move_group.get_current_rpy(end_effector_link=end_effetor))
+        #print(move_group.get_current_rpy(end_effector_link=end_effetor))
         move_group.set_position_target(xyz, end_effetor)
         #pose_goal = geometry_msgs.msg.Pose()
         pose_goal = [xyz[0], xyz[1], xyz[2], rpy[0], rpy[1], rpy[2]]
@@ -254,7 +254,7 @@ class MoveitPython(object):
         if abs(dx) <= 0.0001:
             direction = 0
         else:
-            direction = atan(dy/dx)-pi/2
+            direction = atan(dy/dx)+pi/2
         print(direction)
         rpy = [pi/2,pi/2,direction]
         return rpy
@@ -291,6 +291,17 @@ class MoveitPython(object):
         # For testing:
         current_joints = move_group.get_current_joint_values()
         return all_close(joint_goal, current_joints, 0.001)
+
+    def plan_traj_exec_cartesian_path(self, cartesian_move, avoid_collisions=False):
+
+        plan, fraction = self.plan_cartesian_path(cartesian_move, avoid_collisions)
+        self.display_trajectory(plan)
+        print("fraction",fraction)
+        if input("if the plan is valid press enter to execute or press q to abort") =='q':
+            print("quit")
+        else:
+            self.execute_plan(plan)
+
 
     def plan_cartesian_path(self, cartesian_move, avoid_collisions=False):
         # Copy class variables to local variables to make the web tutorials more clear.
@@ -426,26 +437,45 @@ class MoveitPython(object):
         x = temp_point[0] - target_point[0]
         y = temp_point[1] - target_point[1]
         r = sqrt(x **2 + y **2)
-        if method is False:# grasp
-            self.rpy_goal(rpy=rpy,xyz=target_point)
-            print("rpy", rpy)
+        temp_point[2] += 0.0075
+
+        # prepare = input("prepare position alongside x or y: ")
+        # if prepare == "x":
+        #     self.rpy_goal([pi/2, pi/2, 0],[0.4, -0.1, 0.3])
+        #     rospy.sleep(5)
+        # elif prepare == "y":
+        #     self.rpy_goal([pi/2, pi/2, pi/2],[0.1, -0.4, 0.3])
+        #     rospy.sleep(5)
+        # else:
+        #     print("wrong")
+        if not method:# grasp
+            #self.rpy_goal(rpy=rpy,xyz=target_point)
+            print("target point", target_point)
+            self.rpy_goal(rpy=rpy,xyz=temp_point)
+            print("arrived temp_point")
+            time.sleep(1)
+            extract = [-0.095*x/r, -0.095* y/r,0]
+            self.plan_traj_exec_cartesian_path(cartesian_move=extract, avoid_collisions=False)
+            #self.rpy_goal(rpy=rpy,xyz=target_point)
+            #print("arrived target_point")
+            time.sleep(1)
             grasp_client(0.07)
             time.sleep(1)
-            extract = [0.11*x/r, 0.11* y/r,0]
-            self.execute_plan(self.plan_cartesian_path(cartesian_move=extract, avoid_collisions=False)[0])
+            extract = [0.13*x/r, 0.13* y/r,0]
+            self.plan_traj_exec_cartesian_path(cartesian_move=extract, avoid_collisions=False)
             time.sleep(1)
             move_client(0.08)
             print("grasp extraction complete")
 
-        elif method is True:# "push"
+        elif method:# "push"
             self.rpy_goal(rpy=rpy,xyz=temp_point)
             print("rpy", rpy)
             move_client(0)
             time.sleep(1)
-            extract = [-0.10*x/r, -0.10* y/r,0]
+            extract = [-0.145*x/r, -0.145* y/r,0]
             self.execute_plan(self.plan_cartesian_path(cartesian_move=extract, avoid_collisions=False)[0])
             time.sleep(1)
-            extract = [0.11*x/r, 0.11* y/r,0]
+            extract = [0.12*x/r, 0.12* y/r,0]
             self.execute_plan(self.plan_cartesian_path(cartesian_move=extract, avoid_collisions=False)[0])
             time.sleep(1)
             move_client(0.08)
@@ -520,11 +550,11 @@ class MoveitPython(object):
             box_pose.pose.orientation.w = 1.0
             box_pose.pose.position.x = 0.4
             box_pose.pose.position.y = -0.4
-            box_pose.pose.position.z = 0.165
+            box_pose.pose.position.z = 0.31
         else:
             box_pose.pose.position.x = (points[0][0]+points[1][0]+points[2][0]+points[3][0])/4
             box_pose.pose.position.y = (points[0][1]+points[1][1]+points[2][1]+points[3][1])/4
-            box_pose.pose.position.z = 0.165
+            box_pose.pose.position.z = 0.31
             rpy = self.two_points_to_rpy(points[0],points[1])
             print(rpy)
             x, y, z, w = get_quaternion_from_euler(0,0,rpy[2])
@@ -533,7 +563,7 @@ class MoveitPython(object):
             box_pose.pose.orientation.z = z
             box_pose.pose.orientation.w = w
         box_name = "jenga_box"
-        scene.add_box(box_name, box_pose, size=(0.075, 0.075, 0.33))
+        scene.add_box(box_name, box_pose, size=(0.080, 0.080, 0.62))
         self.box_name = box_name
         return self.wait_for_state_update(box_is_known=True, timeout=timeout)
 
@@ -660,23 +690,24 @@ def main():
         move = MoveitPython()
         time.sleep(1)
 
-        #os.system("python3 "+os.path.dirname(__file__)+"/jenga_obstacle_environment.py")
+        os.system("python3 "+os.path.dirname(__file__)+"/jenga_obstacle_environment.py")
         rospy.sleep(1)
         # print("============ Default Jenga Playing Scene ============")
         # print("============ Adding Collision control objects ============")
-        # move.add_camera_box()
-        # move.add_finger_boxes()
-        # move.attach_camera_box()
-        # move.attach_finger_boxes()
+        move.add_camera_box()
+        move.add_finger_boxes()
+        move.attach_camera_box()
+        move.attach_finger_boxes()
         # print("============ Adding Jenga to the scene ============")
-        # move.add_jenga_box()
+        #move.add_jenga_box()
 
         while True:
             command=input("\ncommand:")
 
             #planning and execution functions
             if command=="init":
-                move.go_to_default()
+                #move.go_to_default()
+                move.rpy_goal([pi/2, pi/2, pi/2],[-0.05, -0.5, 0.5])
                 move_client()
                 move_client(0.08)
             elif command == "quit":
@@ -686,12 +717,16 @@ def main():
             elif command == "cartesian":
                 ans=input("cartesian move:")
                 cartesian_move = [float(ans.split(' ')[i]) for i in range(3)]
-                cartesian_plan, fraction = move.plan_cartesian_path(cartesian_move, avoid_collisions=False)
-                move.display_trajectory(cartesian_plan)
-                if input("if the plan is valid press enter to execute or press q to abort") =='q':
-                    print("quit")
-                    continue
-                move.execute_plan(cartesian_plan)
+                move.plan_traj_exec_cartesian_path(cartesian_move=cartesian_move, avoid_collisions=False)
+                # cartesian_move = [float(ans.split(' ')[i]) for i in range(3)]
+                # cartesian_plan, fraction = move.plan_cartesian_path(cartesian_move, avoid_collisions=False)
+                # move.display_trajectory(cartesian_plan)
+                # if input("if the plan is valid press enter to execute or press q to abort") =='q':
+                #     print("quit")
+                #     continue
+                # move.execute_plan(cartesian_plan)
+
+
             elif command == "goal":
                 tmp=input("Orientation_RPY:").split(' ')
                 rpy = [float(tmp[0]), float(tmp[1]), float(tmp[2])]
@@ -726,8 +761,8 @@ def main():
                 # time.sleep(1)
 
                 # #camera position
-                move.rpy_goal([pi/2, pi/2, pi/2],[0., -0.4, 0.2])
-
+                move.rpy_goal([pi/2, pi/2, pi/2],[-0.05, -0.5, 0.5])
+                rospy.sleep(5)
                 ############### take picture and callib ######################
                 rospy.wait_for_service('CaptureImage')
                 capture_image = rospy.ServiceProxy('CaptureImage', CaptureImage)
@@ -830,6 +865,7 @@ def main():
                 ###############give me 4 poinst to make jenga################
                 points = [[jenga_coordinate1_x, jenga_coordinate1_y, jenga_coordinate1_z],[jenga_coordinate2_x, jenga_coordinate2_y, jenga_coordinate2_z],[jenga_coordinate3_x, jenga_coordinate3_y, jenga_coordinate3_z],[jenga_coordinate4_x, jenga_coordinate4_y, jenga_coordinate4_z]]
                 # give me succeeding points
+
                 move.add_jenga_box(points)
 
                 while True:

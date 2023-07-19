@@ -212,7 +212,7 @@ class CoordinateServer:
                 )
 
                 # Remove Outlier Points
-                pcd, _ = pcd.remove_radius_outlier(1024, 25)
+                pcd, _ = pcd.remove_radius_outlier(256, 25)
                 blocks_pcd.append(pcd)
                 all_pcd.append(pcd)
 
