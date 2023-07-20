@@ -1,18 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="hand">
+    <xacro:include filename="$(find custom_description)/robots/utils.xacro"/>
     <xacro:macro name="custom_hand" params="arm_id tcp_xyz tcp_rpy tcp2_xyz tcp2_rpy camera_xyz camera_rpy">
 
         <link name="${arm_id}_hand">
-            <visual>
-                <geometry>
-                    <mesh filename="package://custom_description/meshes/visual/hand.dae" />
-                </geometry>
-            </visual>
-            <collision>
-                <geometry>
-                    <mesh filename="package://custom_description/meshes/collision/hand.stl" />
-                </geometry>
-            </collision>
+            <xacro:visual name="hand" />
+            <xacro:visual name="camera" xyz="${camera_xyz}" rpy="${camera_rpy}" />
+            <xacro:collision name="hand"/>
+            <xacro:collision name="camera" xyz="${camera_xyz}" rpy="${camera_rpy}" />
         </link>
 
         <joint name="${arm_id}_hand_joint" type="fixed">
@@ -22,64 +17,36 @@
         </joint>
 
         <link name="${arm_id}_hand_sc">
-            <visual>
-                <geometry>
-                    <mesh filename="package://custom_description/meshes/visual/camera.dae" />
-                </geometry>
-            </visual>
             <collision>
                 <geometry>
-                    <mesh filename="package://custom_description/meshes/collision/camera.stl" />
+                    <sphere radius="0.14"/>
+                </geometry>
+            </collision>
+            <collision>
+                <origin xyz="0 0 0.14"/>
+                <geometry>
+                    <box size="0.04 0.14 0.14"/>
                 </geometry>
             </collision>
         </link>
 
         <joint name="${arm_id}_hand_sc_joint" type="fixed">
-            <origin xyz="${camera_xyz}" rpy="${camera_rpy}"/>
             <parent link="${arm_id}_hand" />
             <child link="${arm_id}_hand_sc" />
         </joint>
 
-        <link name="${arm_id}_hand_tcp" />
-        <link name="${arm_id}_hand_tcp2" />
-
-        <joint name="${arm_id}_hand_tcp_joint" type="fixed">
-            <origin xyz="${tcp_xyz}" rpy="${tcp_rpy}" />
-            <parent link="${arm_id}_hand" />
-            <child link="${arm_id}_hand_tcp" />
-        </joint>
-        <joint name="${arm_id}_hand_tcp2_joint" type="fixed">
-            <origin xyz="${tcp2_xyz}" rpy="${tcp2_rpy}" />
-            <parent link="${arm_id}_hand" />
-            <child link="${arm_id}_hand_tcp2" />
-        </joint>
+        <xacro:tcp name="tcp" xyz="${tcp_xyz}" rpy="${tcp_rpy}"/>
+        <xacro:tcp name="tcp2" xyz="${tcp2_xyz}" rpy="${tcp2_rpy}"/>
 
         <link name="${arm_id}_leftfinger">
-            <visual>
-                <geometry>
-                    <mesh filename="package://custom_description/meshes/visual/finger.dae" />
-                </geometry>
-            </visual>
-            <collision>
-                <geometry>
-                    <mesh filename="package://custom_description/meshes/collision/finger.stl"/>
-                </geometry>
-            </collision>
+            <xacro:visual name="finger"/>
+            <xacro:collision name="finger"/>
         </link>
         <link name="${arm_id}_rightfinger">
-            <visual>
-                <origin xyz="0 0 0" rpy="0 0 ${pi}" />
-                <geometry>
-                    <mesh filename="package://custom_description/meshes/visual/finger.dae" />
-                </geometry>
-            </visual>
-            <collision>
-                <origin xyz="0 0 0" rpy="0 0 ${pi}"/>
-                <geometry>
-                    <mesh filename="package://custom_description/meshes/collision/finger.stl"/>
-                </geometry>
-            </collision>
+            <xacro:visual name="finger" rpy="0 0 ${pi}"/>
+            <xacro:collision name="finger" rpy="0 0 ${pi}"/>
         </link>
+
         <joint name="${arm_id}_finger_joint1" type="prismatic">
             <parent link="${arm_id}_hand" />
             <child link="${arm_id}_leftfinger" />

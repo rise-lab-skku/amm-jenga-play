@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro">
+    <xacro:macro name="geometry" params="name:=^ ext xyz:=^ rpy:=^">
+        <origin xyz="${xyz}" rpy="${rpy}" />
+        <geometry>
+            <mesh filename="package://custom_description/meshes/${name}.${ext}" />
+        </geometry>
+    </xacro:macro>
+    <xacro:macro name="visual" params="name xyz:='0 0 0' rpy:='0 0 0'">
+        <visual>
+            <xacro:geometry ext="dae"/>
+        </visual>
+    </xacro:macro>
+    <xacro:macro name="collision" params="name xyz:='0 0 0' rpy:='0 0 0'">
+        <collision>
+            <xacro:geometry ext="stl"/>
+        </collision>
+    </xacro:macro>
+
+    <xacro:macro name="tcp" params="name arm_id:=^ xyz rpy">
+        <link name="${arm_id}_${name}"/>
+        <joint name="${arm_id}_${name}_joint" type="fixed">
+            <origin xyz="${xyz}" rpy="${rpy}"/>
+            <parent link="${arm_id}_hand"/>
+            <child link="${arm_id}_${name}"/>
+        </joint>
+    </xacro:macro>
+
+    <xacro:macro name="disable_collisions_for" params="link:=^ others:=^">
+        <xacro:if value="${others}">
+            <xacro:property name="other" value="${others.pop(0)}" />
+            <disable_collisions link1="${link}" link2="${other}" reason="Never" />
+            <xacro:disable_collisions_for />
+        </xacro:if>
+    </xacro:macro>
+    <xacro:macro name="enable_collisions_for" params="link:=^ others:=^">
+        <xacro:if value="${others}">
+            <xacro:property name="other" value="${others.pop(0)}" />
+            <enable_collisions link1="${link}" link2="${other}" />
+            <xacro:enable_collisions_for />
+        </xacro:if>
+    </xacro:macro>
+
+    <xacro:macro name="configure_collisions" params="link enabled:=''">
+        <xacro:property name="env_fmt" value="$(arg arm_id)_{}" />
+        <xacro:disable_collisions_for link="${env_fmt.format(link)}" others="${[env_fmt.format('link%d'%i) for i in python.range(8)]+[env_fmt.format(j) for j in ['hand','leftfinger','rightfinger']]}" />
+        <xacro:property name="sc_fmt" value="$(arg arm_id)_{}_sc" />
+        <disable_default_collisions link="${sc_fmt.format(link)}" />
+        <xacro:enable_collisions_for link="${sc_fmt.format(link)}" others="${[sc_fmt.format(j) for j in enabled.split()]}" />
+    </xacro:macro>
+</robot>
