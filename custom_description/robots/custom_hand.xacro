@@ -27,11 +27,11 @@
                     <mesh filename="package://custom_description/meshes/visual/camera.dae" />
                 </geometry>
             </visual>
-            <!-- <collision>
+            <collision>
                 <geometry>
                     <mesh filename="package://custom_description/meshes/collision/camera.stl" />
                 </geometry>
-            </collision> -->
+            </collision>
         </link>
 
         <joint name="${arm_id}_hand_sc_joint" type="fixed">
@@ -60,11 +60,11 @@
                     <mesh filename="package://custom_description/meshes/visual/finger.dae" />
                 </geometry>
             </visual>
-            <!-- <collision>
+            <collision>
                 <geometry>
                     <mesh filename="package://custom_description/meshes/collision/finger.stl"/>
                 </geometry>
-            </collision> -->
+            </collision>
         </link>
         <link name="${arm_id}_rightfinger">
             <visual>
@@ -73,12 +73,12 @@
                     <mesh filename="package://custom_description/meshes/visual/finger.dae" />
                 </geometry>
             </visual>
-            <!-- <collision>
+            <collision>
                 <origin xyz="0 0 0" rpy="0 0 ${pi}"/>
                 <geometry>
                     <mesh filename="package://custom_description/meshes/collision/finger.stl"/>
                 </geometry>
-            </collision> -->
+            </collision>
         </link>
         <joint name="${arm_id}_finger_joint1" type="prismatic">
             <parent link="${arm_id}_hand" />
@@ -94,7 +94,7 @@
             <origin xyz="0 0 0.0584" rpy="0 0 0" />
             <axis xyz="0 -1 0" />
             <limit effort="100" lower="0.0" upper="0.04" velocity="0.2" />
-            <!-- <mimic joint="${arm_id}_finger_joint1" /> -->
+            <mimic joint="${arm_id}_finger_joint1" />
             <dynamics damping="0.3" />
         </joint>
     </xacro:macro>
