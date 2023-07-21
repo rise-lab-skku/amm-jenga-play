@@ -35,8 +35,8 @@
             <child link="${arm_id}_hand_sc" />
         </joint>
 
-        <xacro:tcp name="tcp" xyz="${tcp_xyz}" rpy="${tcp_rpy}"/>
-        <xacro:tcp name="tcp2" xyz="${tcp2_xyz}" rpy="${tcp2_rpy}"/>
+        <xacro:tcp name="grasp-tcp" parent="hand" xyz="${tcp_xyz}" rpy="${tcp_rpy}"/>
+        <xacro:tcp name="push-tcp" parent="hand" xyz="${tcp2_xyz}" rpy="${tcp2_rpy}"/>
 
         <link name="${arm_id}_leftfinger">
             <xacro:visual name="finger"/>

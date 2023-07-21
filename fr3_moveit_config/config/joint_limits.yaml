@@ -7,42 +7,84 @@ default_acceleration_scaling_factor: 0.1
 
 # Specific joint properties can be changed with the keys [max_position, min_position, max_velocity, max_acceleration]
 # Joint limits can be turned off with [has_velocity_limits, has_acceleration_limits]
+
+# As MoveIt! does not support jerk limits, the acceleration limits provided here are the highest values that guarantee
+# that no jerk limits will be violated. More precisely, applying Euler differentiation in the worst case (from min accel
+# to max accel in 1 ms) the acceleration limits are the ones that satisfy
+# max_jerk = (max_acceleration - min_acceleration) / 0.001
+# default jointlimits are below
+# joint1: -166~166
+#joint2: -101~101
+#joint3: -166~166
+#joint4: -176~-4
+#joint5: -166~166
+#joint6: -1~215
+#joint7: -166~166
+
 joint_limits:
-  fr3_joint1:
+  $(arg arm_id)_finger_joint1:
     has_velocity_limits: true
-    max_velocity: 2
+    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
-  fr3_joint2:
+  $(arg arm_id)_finger_joint2:
     has_velocity_limits: true
-    max_velocity: 1
+    max_velocity: 0.1
     has_acceleration_limits: false
     max_acceleration: 0
-  fr3_joint3:
+  $(arg arm_id)_joint1:
     has_position_limits: true
-    max_position: 2.8
-    min_position: -2.8
+    max_position: 2.3093
+    min_position: -2.3093
     has_velocity_limits: true
-    max_velocity: 1.5
-    has_acceleration_limits: false
-    max_acceleration: 0
-  fr3_joint4:
+    max_velocity: 2.1750
+    has_acceleration_limits: true
+    max_acceleration: 3.75
+  $(arg arm_id)_joint2:
+    has_position_limits: true
+    max_position: 1.5133
+    min_position: -1.5133
     has_velocity_limits: true
-    max_velocity: 1.25
-    has_acceleration_limits: false
-    max_acceleration: 0
-  fr3_joint5:
+    max_velocity: 2.1750
+    has_acceleration_limits: true
+    max_acceleration: 1.875
+  $(arg arm_id)_joint3:
+    has_position_limits: true
+    max_position: 2.4937
+    min_position: -2.4937
     has_velocity_limits: true
-    max_velocity: 3
-    has_acceleration_limits: false
-    max_acceleration: 0
-  fr3_joint6:
+    max_velocity: 2.1750
+    has_acceleration_limits: true
+    max_acceleration: 2.5
+  $(arg arm_id)_joint4:
+    has_position_limits: true
+    max_position: -0.4461
+    min_position: -2.7478
     has_velocity_limits: true
-    max_velocity: 1.5
-    has_acceleration_limits: false
-    max_acceleration: 0
-  fr3_joint7:
+    max_velocity: 2.1750
+    has_acceleration_limits: true
+    max_acceleration: 3.125
+  $(arg arm_id)_joint5:
+    has_position_limits: true
+    max_position: 2.4800
+    min_position: -2.4800
     has_velocity_limits: true
-    max_velocity: 3
-    has_acceleration_limits: false
-    max_acceleration: 0
+    max_velocity: 2.6100
+    has_acceleration_limits: true
+    max_acceleration: 3.75
+  $(arg arm_id)_joint6:
+    has_position_limits: true
+    max_position: 4.2094
+    min_position: 0.8521
+    has_velocity_limits: true
+    max_velocity: 2.6100
+    has_acceleration_limits: true
+    max_acceleration: 5
+  $(arg arm_id)_joint7:
+    has_position_limits: true
+    max_position: 2.4435
+    min_position: -0.1745
+    has_velocity_limits: true
+    max_velocity: 2.6100
+    has_acceleration_limits: true
+    max_acceleration: 5

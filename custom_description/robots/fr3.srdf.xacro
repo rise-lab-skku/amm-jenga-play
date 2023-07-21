@@ -3,14 +3,23 @@
     <xacro:include filename="$(find custom_description)/robots/utils.xacro" />
     <xacro:arg name="arm_id" default="panda" />
 
-    <group name="$(arg arm_id)_gripper">
-        <chain base_link="$(arg arm_id)_link0" tip_link="$(arg arm_id)_tcp" />
+    <group name="$(arg arm_id)_arm">
+        <chain base_link="$(arg arm_id)_link0" tip_link="$(arg arm_id)_link8" />
     </group>
-    <group name="$(arg arm_id)_pusher">
-        <chain base_link="$(arg arm_id)_link0" tip_link="$(arg arm_id)_tcp2" />
+    <group name="$(arg arm_id)_hand">
+        <link name="$(arg arm_id)_hand"/>
+        <link name="$(arg arm_id)_leftfinger"/>
+        <link name="$(arg arm_id)_rightfinger"/>
     </group>
+    <group name="$(arg arm_id)_manipulator">
+        <chain base_link="$(arg arm_id)_link0" tip_link="$(arg arm_id)_hand_push-tcp" />
+    </group>
+    <!-- <group name="$(arg arm_id)_body">
+        <group name="$(arg arm_id)_arm" />
+        <group name="$(arg arm_id)_hand" />
+    </group> -->
 
-    <group_state name="ready" group="$(arg arm_id)_gripper">
+    <group_state name="ready" group="$(arg arm_id)_manipulator">
         <joint name="$(arg arm_id)_joint1" value="0" />
         <joint name="$(arg arm_id)_joint2" value="${-pi/4}" />
         <joint name="$(arg arm_id)_joint3" value="0" />
@@ -18,17 +27,25 @@
         <joint name="$(arg arm_id)_joint5" value="0" />
         <joint name="$(arg arm_id)_joint6" value="${pi/2}" />
         <joint name="$(arg arm_id)_joint7" value="${pi/4}" />
+        <!-- <joint name="$(arg arm_id)_finger_joint1" value="0.04" /> -->
     </group_state>
 
-    <virtual_joint name="virtual_joint" type="fixed" parent_frame="world" child_link="$(arg arm_id)_link0" />
+    <!-- <virtual_joint name="$(arg arm_id)_virtual_joint" type="fixed" parent_frame="world" child_link="$(arg arm_id)_virtual_link" /> -->
 
     <xacro:configure_collisions link="link0" enabled="link5 link6 link7 hand" />
     <xacro:configure_collisions link="link1" enabled="link5 link6 link7 hand" />
     <xacro:configure_collisions link="link2" enabled="link5 link6 link7 hand" />
     <xacro:configure_collisions link="link3" enabled="link7 hand" />
     <xacro:configure_collisions link="link4" enabled="hand"/>
-    <xacro:configure_collisions link="link5" />
-    <xacro:configure_collisions link="link6" />
+    <xacro:configure_collisions link="link5" enabled_fine="hand"/>
+    <xacro:configure_collisions link="link6" enabled_fine="hand"/>
     <xacro:configure_collisions link="link7" />
-    <xacro:configure_collisions link="hand" />
+    <xacro:configure_collisions link="hand" enabled_fine="link5 link6" />
+    <disable_collisions link1="$(arg arm_id)_leftfinger" link2="$(arg arm_id)_rightfinger" />
+    <disable_default_collisions link="$(arg arm_id)_base"/>
+    <enable_collisions link1="$(arg arm_id)_base" link2="$(arg arm_id)_hand_sc" />
+
+    <!-- <end_effector name="$(arg arm_id)_gripper" parent_link="$(arg arm_id)_tcp" group="$(arg arm_id)_hand" parent_group="$(arg arm_id)_manipulator"/> -->
+    <end_effector name="$(arg arm_id)_tcp2" parent_link="$(arg arm_id)_hand_push-tcp" group="$(arg arm_id)_hand" parent_group="$(arg arm_id)_manipulator"/>
+    <end_effector name="$(arg arm_id)_hand" parent_link="$(arg arm_id)_link8" group="$(arg arm_id)_hand" parent_group="$(arg arm_id)_arm" />
 </robot>

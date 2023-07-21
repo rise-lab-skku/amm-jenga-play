@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="load_gripper" default="true" />
+  <arg name="rviz_config" default="$(dirname)/moveit.rviz"/>
+  <arg name="use_camera" default="true" />
+
+  <!-- By default use joint position controllers -->
+  <arg name="transmission" default="position" />
+
+  <!-- as well as MoveIt demo -->
+  <include file="$(dirname)/demo.launch" pass_all_args="true">
+    <!-- robot description is loaded by franka_control.launch -->
+    <arg name="load_robot_description" value="true" />
+    <!-- MoveItSimpleControllerManager provides ros_control's JointTrajectory controllers
+         as well as GripperCommand actions -->
+    <arg name="moveit_controller_manager" value="simple" />
+    <arg name="rviz_config" value="$(arg rviz_config)"/>
+  </include>
+
+  <!-- Kinect 카메라 불러오기 -->
+  <group if="$(arg use_camera)">
+    <include file="$(dirname)/calibration_1.launch"/>
+    <include file="$(find azure_kinect_ros_driver)/launch/kinect_rgbd.launch">
+      <arg name="overwrite_robot_description" value="false" />
+      <arg name="point_cloud"                 value="true" />
+      <arg name="rgb_point_cloud"             value="true" />
+    </include>
+  </group>
+</launch>

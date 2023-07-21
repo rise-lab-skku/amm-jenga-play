@@ -1,30 +1,46 @@
 <?xml version='1.0' encoding='utf-8'?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="fr3">
-    <xacro:include filename="$(find franka_description)/robots/common/franka_robot.xacro"/>
+    <xacro:include filename="$(find franka_description)/robots/common/franka_arm.xacro"/>
     <xacro:include filename="$(find custom_description)/robots/custom_hand.xacro"/>
-
     <xacro:arg name="arm_id" default="panda"/>
-    <xacro:arg name="tcp_xyz" default="0 0 0.0934"/>
-    <xacro:arg name="tcp_rpy" default="0 0 0"/>
-    <xacro:arg name="tcp2_xyz" default="0 0 0.1974"/>
-    <xacro:arg name="tcp2_rpy" default="0 0 0"/>
-    <xacro:arg name="camera_xyz" default="0 0 0"/>
-    <xacro:arg name="camera_rpy" default="${pi} ${-pi/2} 0"/>
 
-    <xacro:franka_robot
+    <xacro:franka_arm
         arm_id="$(arg arm_id)"
+        safety_distance="0.03"
         joint_limits="${xacro.load_yaml('$(find franka_description)/robots/fr3/joint_limits.yaml')}"
-        hand="false"
         gazebo="false"
     />
 
     <xacro:custom_hand
         arm_id="$(arg arm_id)"
-        tcp_xyz="$(arg tcp_xyz)"
-        tcp_rpy="$(arg tcp_rpy)"
-        tcp2_xyz="$(arg tcp2_xyz)"
-        tcp2_rpy="$(arg tcp2_rpy)"
-        camera_xyz="$(arg camera_xyz)"
-        camera_rpy="$(arg camera_rpy)"
+        tcp_xyz="0 0 0.0934"
+        tcp_rpy="0 0 0"
+        tcp2_xyz="0 0 0.1974"
+        tcp2_rpy="0 0 0"
+        camera_xyz="0 0 0"
+        camera_rpy="${pi} ${-pi/2} 0"
     />
+
+    <link name="$(arg arm_id)_base">
+        <visual>
+            <origin xyz="-0.04 0 0.01"/>
+            <geometry>
+                <box size="0.25 0.2 0.02"/>
+            </geometry>
+            <material name="black">
+                <color rgba="0 0 0 1"/>
+            </material>
+        </visual>
+        <collision>
+            <origin xyz="-0.04 0 0.01"/>
+            <geometry>
+                <box size="0.25 0.2 0.02"/>
+            </geometry>
+        </collision>
+    </link>
+    <joint name="$(arg arm_id)_joint0" type="fixed">
+        <origin xyz="0 0 0.02"/>
+        <parent link="$(arg arm_id)_base"/>
+        <child link="$(arg arm_id)_link0"/>
+    </joint>
 </robot>

@@ -17,19 +17,19 @@
         </collision>
     </xacro:macro>
 
-    <xacro:macro name="tcp" params="name arm_id:=^ xyz rpy">
-        <link name="${arm_id}_${name}"/>
-        <joint name="${arm_id}_${name}_joint" type="fixed">
+    <xacro:macro name="tcp" params="name arm_id:=^ parent xyz rpy">
+        <link name="${arm_id}_${parent}_${name}"/>
+        <joint name="${arm_id}_${parent}_${name}_joint" type="fixed">
             <origin xyz="${xyz}" rpy="${rpy}"/>
-            <parent link="${arm_id}_hand"/>
-            <child link="${arm_id}_${name}"/>
+            <parent link="${arm_id}_${parent}"/>
+            <child link="${arm_id}_${parent}_${name}"/>
         </joint>
     </xacro:macro>
 
     <xacro:macro name="disable_collisions_for" params="link:=^ others:=^">
         <xacro:if value="${others}">
             <xacro:property name="other" value="${others.pop(0)}" />
-            <disable_collisions link1="${link}" link2="${other}" reason="Never" />
+            <disable_collisions link1="${link}" link2="${other}" />
             <xacro:disable_collisions_for />
         </xacro:if>
     </xacro:macro>
@@ -41,11 +41,11 @@
         </xacro:if>
     </xacro:macro>
 
-    <xacro:macro name="configure_collisions" params="link enabled:=''">
+    <xacro:macro name="configure_collisions" params="link enabled:='' enabled_fine:=''">
         <xacro:property name="env_fmt" value="$(arg arm_id)_{}" />
-        <xacro:disable_collisions_for link="${env_fmt.format(link)}" others="${[env_fmt.format('link%d'%i) for i in python.range(8)]+[env_fmt.format(j) for j in ['hand','leftfinger','rightfinger']]}" />
+        <xacro:disable_collisions_for link="${env_fmt.format(link)}" others="${python.list((python.set(env_fmt.format('link%d'%i) for i in python.range(8))|python.set(env_fmt.format(j) for j in ['hand','leftfinger','rightfinger']))-python.set(env_fmt.format(k) for k in enabled_fine.split()))}" />
         <xacro:property name="sc_fmt" value="$(arg arm_id)_{}_sc" />
         <disable_default_collisions link="${sc_fmt.format(link)}" />
-        <xacro:enable_collisions_for link="${sc_fmt.format(link)}" others="${[sc_fmt.format(j) for j in enabled.split()]}" />
+        <xacro:enable_collisions_for link="${sc_fmt.format(link)}" others="${python.list(python.set(sc_fmt.format(i) for i in enabled.split()))}" />
     </xacro:macro>
 </robot>
