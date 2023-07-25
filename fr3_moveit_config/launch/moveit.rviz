@@ -210,7 +210,7 @@ Visualization Manager:
         Goal State Color: 250; 128; 0
         Interactive Marker Size: 0
         Joint Violation Color: 255; 0; 255
-        Planning Group: panda_manipulator2
+        Planning Group: panda_manipulator
         Query Goal State: false
         Query Start State: false
         Show Workspace: false
@@ -394,7 +394,7 @@ Visualization Manager:
   Global Options:
     Background Color: 48; 48; 48
     Default Light: true
-    Fixed Frame: panda_link0
+    Fixed Frame: panda_base
     Frame Rate: 30
   Name: root
   Tools:
