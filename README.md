@@ -152,7 +152,7 @@ ets4 = ets2 * rtb.ETS([E4, E5])
     print(sm.SE3(fk))
     ```
 
-    ![img](<img/Screenshot from 2023-06-20 14-33-41.png>)
+    ![img](<imgs/Screenshot from 2023-06-20 14-33-41.png>)
 
 </details>
 
