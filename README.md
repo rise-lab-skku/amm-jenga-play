@@ -205,6 +205,8 @@ Please describe here about what has been done and what to do.
 
 - TBD
 </details>
+
+
 ------
 ## Members
 | [신태하](https://github.com/mirinae3145) | [신현수](https://github.com/Hyun-soo-Shin) | [이윤서](https://github.com/Corinyi) |
@@ -212,9 +214,21 @@ Please describe here about what has been done and what to do.
 | <img src="https://avatars.githubusercontent.com/mirinae3145" width="100"> | <img src="https://avatars.githubusercontent.com/Hyun-soo-Shin" width="100"> | <img src="https://avatars.githubusercontent.com/Corinyi" width="100"> |
 
 ------
+## Roles
+>- **신태하**  
+>   - abcde
+>   - abcde
+>- **이윤서**  
+>   - abcde
+>   - abcde
+>- **신현수**  
+>   - abcde
+>   - abcde
+
+------
 ## Block Recognition
 
-### Get **RGB Image & Depth Image** from RGB-D Camera (Intel® RealSense™ Depth Camera D435f)
+### Get **RGB Image & Depth Image** from RGB-D Camera (Azure Kinect DK)
 | RGB Image | Depth Image |
 | :-: | :-: |
 | <img src="./imgs/color.png" width="400"> | <img src="./imgs/depth.png" width="400"> |
@@ -233,17 +247,22 @@ Please describe here about what has been done and what to do.
 | :-: | :-: |
 | <img src="./imgs/pcd_tower_before_outlier.png" width="400"> | <img src="./imgs/single_block_pcd.png" width="400"> |
 
-### Iterative Closest Point Registration (Camera Coordinate System to Mesh Coordinate System)
+### Iterative Closest Point Registration
+Use Iterative Closest Point Algorithm to align the Jenga PointCloud from Camera Coordinate System to Jenga Coordinate System (Mesh)
+
+Camera Coordinate System -> Jenga Coordinate System
 | Source Point Cloud (Outlier Removed) | Target Point Cloud  |
 | :-: | :-: |
 | <img src="./imgs/pcd_tower.png" width="400"> | <img src="./imgs/target_pcd.png" width="400"> |
 
-| Before ICP | After ICP  |
-| :-: | :-: |
-| <img src="./imgs/before_icp2.png" width="400"> | <img src="./imgs/after_icp.png" width="400"> |
+| Before ICP | Initial Alignment |  After ICP  |
+| :-: | :-: | :-: |
+| <img src="./imgs/before_icp.png" width="400"> | <img src="./imgs/before_icp1.png" width="400"> | <img src="./imgs/after_icp.png" width="400"> | 
 
-### Get Block Coordinate and Target Coordinate (Mesh Coordinate System)
+### Estimate Coordinates
+Estimate Target Block's Center Coordinate (Red Point), TCP Target Coordinate (Blue Point) (On Jenga Coordinate System)
 | Source Point Cloud (Outlier Removed) | Target Point Cloud  |
 | :-: | :-: |
 | <img src="./imgs/block_pcd_center_target.png" width="400"> | <img src="./imgs/tower_pcd_target.png" width="400"> |
 Estimated Block Center Point (Red) and TCP Target Point (Red)
+

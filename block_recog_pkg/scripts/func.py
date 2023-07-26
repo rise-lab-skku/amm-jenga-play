@@ -128,7 +128,8 @@ def get_pointcloud_from_color_depth(color_image, depth_image, intrinsic):
     elif isinstance(depth_image, np.ndarray):
         depth_image = o3d.geometry.Image(depth_image)
 
-    rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(color_image, depth_image, depth_scale=1, depth_trunc=3000.0, convert_rgb_to_intensity=False)
+    # rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(color_image, depth_image, depth_scale=1, depth_trunc=3000.0, convert_rgb_to_intensity=False)
+    rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(color_image, depth_image, convert_rgb_to_intensity=False)
     pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd_image, intrinsic)
 
     rospy.loginfo("----point cloud is generated----")
@@ -156,12 +157,11 @@ def prepare_icp(source, target):
     move = np.array(target_tmp.get_oriented_bounding_box().get_center() - source_tmp.get_oriented_bounding_box().get_center())
 
     source_tmp.transform(np.linalg.inv(initial_transform))
-    # o3d.visualization.draw_geometries([source_tmp, target_tmp])
+
     return source_tmp, target_tmp, move
 
 def do_ICP(source, target, trans_init):
-
-    # evaluation = o3d.pipelines.registration.evaluate_registration(source, target, threshold, trans_init)
+    
     print(o3d.pipelines.registration.evaluate_registration(source, target, 10, trans_init))
     reg_p2p = o3d.pipelines.registration.registration_icp(
         source, target, 10, trans_init,
@@ -169,9 +169,9 @@ def do_ICP(source, target, trans_init):
         o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=2000))
 
     transform_matrix = copy.deepcopy(reg_p2p.transformation)
-    transform_matrix[0,3] /= 1000
-    transform_matrix[1,3] /= 1000
-    transform_matrix[2,3] /= 1000
+    # transform_matrix[0,3] /= 1000
+    # transform_matrix[1,3] /= 1000
+    # transform_matrix[2,3] /= 1000
     print(transform_matrix)
     return transform_matrix
 
@@ -195,97 +195,91 @@ def get_coordinate(target_block, blocks_pcd_by_color, trans):
                 continue
 
             new_trans = copy.deepcopy(trans)
-            new_trans[0,3]*=1000
-            new_trans[1,3]*=1000
-            new_trans[2,3]*=1000
+            # new_trans[0,3]*=1000
+            # new_trans[1,3]*=1000
+            # new_trans[2,3]*=1000
 
             pcd_new = transform_blocks(pcd, new_trans)
 
 
-
-
             box_extent = pcd_new.get_axis_aligned_bounding_box().get_extent()
-            # print("BOX EXTENT : ", box_extent)
 
             center_coordinate = np.array(pcd_new.get_axis_aligned_bounding_box().get_box_points()).mean(axis=0)
 
-            # print("BOX CENTER COORDINATE : ", center_coordinate)
-
-            # print("BOX MAX X,Y and MEAN Z Coordinate")
             x_mean = np.array(pcd_new.get_axis_aligned_bounding_box().get_box_points())[:,0].mean()
             y_mean = np.array(pcd_new.get_axis_aligned_bounding_box().get_box_points())[:,1].mean()
             z_mean = np.array(pcd_new.get_axis_aligned_bounding_box().get_box_points())[:,2].mean()
 
-            if box_extent[1] > 70:
+            if box_extent[1] > 0.070:
                 print("PULL DIRECTION : X")
                 push = False
 
-                cen_x = x_mean #- 25/2
-                cen_y = y_mean #- 75/2
+                cen_x = x_mean 
+                cen_y = y_mean 
                 cen_z = z_mean
 
-                target_x = cen_x + 120
+                target_x = cen_x + 0.120
                 target_y = cen_y
                 target_z = cen_z
 
-            elif box_extent[0] > 70:
+            elif box_extent[0] > 0.070:
                 print("PULL DIRECTION : Y")
                 push = False
 
-                cen_x = x_mean# - 75/2
-                cen_y = y_mean# - 25/2
+                cen_x = x_mean
+                cen_y = y_mean
                 cen_z = z_mean
 
                 target_x = cen_x
-                target_y = cen_y + 120
+                target_y = cen_y + 0.120
                 target_z = cen_z
 
-            elif abs(center_coordinate[0]) < 10 and box_extent [1] < 15:
+            elif abs(center_coordinate[0]) < 0.010 and box_extent [1] < 0.015:
                 print("PUSH DIRECTION : Y or -Y")
                 push = True
 
-                cen_x = x_mean# - 25/2
-                cen_y = y_mean - 75/2
+                cen_x = x_mean
+                cen_y = y_mean - 0.075/2
                 cen_z = z_mean
 
                 target_x = cen_x
-                target_y = cen_y + 120
+                target_y = cen_y + 0.120
                 target_z = cen_z
 
-            elif abs(center_coordinate[1]) < 10 and box_extent [0] < 15:
+            elif abs(center_coordinate[1]) < 0.010 and box_extent [0] < 0.015:
                 print("PUSH DIRECTION : X or -X")
                 push = True
 
-                cen_x = x_mean - 75/2
-                cen_y = y_mean# - 25/2
+                cen_x = x_mean - 0.075/2
+                cen_y = y_mean
                 cen_z = z_mean
 
-                target_x = cen_x + 120
+                target_x = cen_x + 0.120
                 target_y = cen_y
                 target_z = cen_z
 
-            elif box_extent[1] < 15:
+            elif box_extent[1] < 0.015:
                 print("PULL DIRECTION : -X")
                 push = False
 
-                cen_x = x_mean# - 25/2
-                cen_y = y_mean - 75/2
+                cen_x = x_mean
+                cen_y = y_mean - 0.075/2
                 cen_z = z_mean
 
-                target_x = cen_x - 120
+                target_x = cen_x - 0.120
                 target_y = cen_y
                 target_z = cen_z
 
-            elif box_extent[0] < 15:
+            elif box_extent[0] < 0.015:
                 print("PULL DIRECTION : -Y")
                 push = False
 
-                cen_x = x_mean - 75/2
-                cen_y = y_mean# - 25/2
+                cen_x = x_mean - 0.075/2
+                cen_y = y_mean
                 cen_z = z_mean
 
                 target_x = cen_x
-                target_y = cen_y - 120
+                target_y = cen_y - 0.120
                 target_z = cen_z
 
             else:
@@ -293,8 +287,8 @@ def get_coordinate(target_block, blocks_pcd_by_color, trans):
 
                 return None, None, None
 
-    center_coordinate = np.array([cen_x, cen_y, cen_z]) / 1000
-    target_coordinate = np.array([target_x, target_y, target_z]) / 1000
+    center_coordinate = np.array([cen_x, cen_y, cen_z])# / 1000
+    target_coordinate = np.array([target_x, target_y, target_z])# / 1000
 
     return center_coordinate, target_coordinate, push
 

@@ -42,32 +42,15 @@ def transform_coordinates(coordinate1, coordinate2, transform_matrix_lst):
 class CoordinateServer:
     def __init__(self):
         self.mesh_tower = o3d.io.read_triangle_mesh(
-            "/home/hr/Desktop/urp2/amm-jenga-play/block_recog/mesh/jenga_tower_side_xy.stl")
+            "../block_recog/mesh/jenga_tower_side_xy_m.stl")
         self.mesh_tower.compute_vertex_normals()
 
-        # jenga_first_coord1 = np.array([0.0375, 0.0375, 0])
-        # jenga_first_coord2 = np.array([0.0375, -0.0375, 0])
-        # jenga_first_coord3 = np.array([-0.0375, -0.0375, 0])
-        # jenga_first_coord4 = np.array([-0.0375, 0.0375, 0])
-
-        # self.jenga_first_coord = [jenga_first_coord1, jenga_first_coord2, jenga_first_coord3, jenga_first_coord4]
 
         self.tower_transform_initialized = False
         # -------------------------------------------------------------------------
 
-        # with open('/home/shs/catkin_ws/src/block_recog/img/dep.p', 'rb') as dep:
-        #     img_depth = pickle.load(dep, encoding="16UC1")
-
-        # with open('/home/shs/catkin_ws/src/block_recog/img/rgb.p', 'rb') as rgb:
-        #     img_color = pickle.load(rgb)
         self.img_depth = None
         self.img_color = None
-
-
-        # with open('/home/hr/Desktop/rgb.p', 'rb') as rgb:
-        #     self.img_color = pickle.load(rgb, encoding="bgr8")
-        # with open('/home/hr/Desktop/dep.p', 'rb') as dep:
-        #     self.img_depth = pickle.load(dep, encoding="16UC1")
 
         self.ready_to_capture_image = False
         self.capture_once = 0
@@ -98,33 +81,24 @@ class CoordinateServer:
 
         tower_mask, tower_color = self.get_tower_mask(blocks_mask_by_color, blocks_rgb_by_color)
 
-        rospy.loginfo("self.get_tower_mask")
-        # masked_depth = cv2.bitwise_and(img_depth, img_depth, mask = tower_mask)
-        # tower_pcd = get_pointcloud_from_color_depth(color_image=tower_color, depth_image=masked_depth, intrinsic=intrinsic)
-
         # --------------------------------------------------------------------------
         self.pcd_combined, self.block_pcd_by_color = self.build_clean_tower_pcd_from_blocks(
             blocks_mask_by_color, tower_color, self.img_depth
         )
-        # o3d.visualization.draw_geometries([self.pcd_combined])
-
-        rospy.loginfo("self.block_pcd_by_color")
+        
         # --------------------------------------------------------------------------
 
-        self.trans_matrix = self.transform_matrix_mesh_to_camera(self.pcd_combined)
+        self.mesh_to_cam_transform_matrix = self.transform_matrix_mesh_to_camera(self.pcd_combined)
 
-            # rospy.logwarn(f"Dept
         # --------------------------------------------------------------------------
 
         # Wait for lookupTransform to become available
         listener = tf.TransformListener()
         rospy.logwarn("Waiting for transform between [panda_link0] and [rgb_camera_link]")
         listener.waitForTransform("panda_link0", "rgb_camera_link", rospy.Time(0), rospy.Duration(5.0))
-        # listener.waitForTransform("rgb_camera_link", "panda_link0", rospy.Time(0), rospy.Duration(5.0))
+
         try:
-            # lookupTransform('target', 'source', Time)
             (trans_cam_to_world, rot_cam_to_world) = listener.lookupTransform("panda_link0", "rgb_camera_link", rospy.Time(0))
-            # (trans_cam_to_world, rot_cam_to_world) = listener.lookupTransform("rgb_camera_link", "panda_link0",  rospy.Time(0))
         except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
             raise
 
@@ -132,7 +106,7 @@ class CoordinateServer:
 
         rospy.loginfo(f"self.cam_to_world_transform_matrix : {self.cam_to_world_transform_matrix}")
 
-        self.transform_matrix_lst = [self.trans_matrix, self.cam_to_world_transform_matrix]
+        self.transform_matrix_lst = [self.mesh_to_cam_transform_matrix, self.cam_to_world_transform_matrix]
 
         self.tower_transform_initialized = True
 
@@ -164,22 +138,12 @@ class CoordinateServer:
         if self.img_color is None and self.ready_to_capture_image:
             self.img_color = bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
             rospy.logwarn(f"RGB image captured (self.img_color.shape: {self.img_color.shape}))")
-        # with open('/home/hr/Desktop/rgb.p', 'rb') as rgb:
-        #     self.img_color = pickle.load(rgb, encoding="bgr8")
-        # Save pickle
-        # with open('/home/shs/catkin_ws/src/block_recog/img/rgb.p', 'wb') as rgb:
-        #     pickle.dump(img_color, rgb)
 
     def image_callback2(self, msg):
         # Convert ROS images to OpenCV format
         if self.img_depth is None and self.ready_to_capture_image:
             self.img_depth = bridge.imgmsg_to_cv2(msg, desired_encoding="16UC1")
             rospy.logwarn(f"Depth image captured (self.img_depth.shape: {self.img_depth.shape}))")
-        # with open('/home/hr/Desktop/dep.p', 'rb') as dep:
-        #     self.image_depth = pickle.load(dep, encoding="16UC1")
-        # Save pickle
-        # with open('/home/shs/catkin_ws/src/block_recog/img/dep.p', 'wb') as dep:
-        #     pickle.dump(img_depth, dep)
 
     def get_tower_mask(self, blocks_mask_by_color, blocks_rgb_by_color):
         tower_mask = 0
@@ -212,7 +176,7 @@ class CoordinateServer:
                 )
 
                 # Remove Outlier Points
-                pcd, _ = pcd.remove_radius_outlier(256, 25)
+                pcd, _ = pcd.remove_radius_outlier(256, 0.025)
                 blocks_pcd.append(pcd)
                 all_pcd.append(pcd)
 
@@ -225,8 +189,6 @@ class CoordinateServer:
         return pcd_combined, blocks_pcd_by_color
 
     def transform_matrix_mesh_to_camera(self, pcd_combined):
-        # mesh_tower = o3d.io.read_triangle_mesh("/home/hr/Desktop/urp2/amm-jenga-play/block_recog/mesh/jenga_tower_side_xy.stl")
-        # mesh_tower.compute_vertex_normals()
 
         pcd_c = copy.deepcopy(pcd_combined)
         pcd_target = copy.deepcopy(self.mesh_tower.sample_points_uniformly(number_of_points=len(pcd_c.points)))
@@ -243,8 +205,6 @@ class CoordinateServer:
 
         rospy.loginfo(f"camera_to_mesh_matrix: {trans_matrix}")
 
-        # mesh_to_camera_matrix = np.linalg.inv(trans_matrix)
-        # func.draw_registration_result(source, target, trans_matrix)
 
         return np.linalg.inv(trans_matrix)   #camera_to_mesh_matrix, mesh_to_camera_matrix
 
@@ -285,7 +245,6 @@ class CoordinateServer:
 
         if target_block_color == "init":
             if int(target_block_label) == 1:
-                print('true')
                 coordinate1 = np.array([0.0375, 0.0375, 0])
                 coordinate2 = np.array([0.0375, -0.0375, 0])
                 push = False
@@ -295,12 +254,11 @@ class CoordinateServer:
                 push = False
 
         else:
-            print(blocks_pcd_by_color)
             # CENTER, TARGET, PUSH
             coordinate1, coordinate2, push = func.get_coordinate(
                 request.target_block, blocks_pcd_by_color, self.camera_to_mesh_matrix
             )
-        print('hello world')
+
         coordinate1, coordinate2 = transform_coordinates(coordinate1, coordinate2, self.transform_matrix_lst)
 
         resp.center_x = coordinate1[0]
@@ -317,8 +275,4 @@ class CoordinateServer:
 if __name__ == "__main__":
     rospy.init_node("service_server_node")  # 노드 초기화
     coordinate_server = CoordinateServer()
-    # request = GetWorldCoordRequest()
-    # request.target_block = "init 1"
-    # coordinate_server.find_initial_tower_transform()
-    # coordinate_server.GetWorldCoordinates(request)
     rospy.spin()
