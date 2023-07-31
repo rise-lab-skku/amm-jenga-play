@@ -3,7 +3,7 @@ import rospy
 from block_recog_pkg.srv import (
     GetWorldCoord,
     GetWorldCoordResponse,
-    GetWorldCoordRequest,
+    # GetWorldCoordRequest,
     CaptureImage,
     CaptureImageResponse,
 )
@@ -13,10 +13,10 @@ import time
 import cv2
 import open3d as o3d
 import func
+from typing import Tuple, List
 
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
-import pickle
 import copy
 
 bridge = CvBridge()
@@ -24,8 +24,20 @@ bridge = CvBridge()
 colors = colors = ["green", "pink", "yellow", "blue", "violet", "red"]
 
 
-def transform_coordinates(coordinate1, coordinate2, transform_matrix_lst):
+def transform_coordinates(
+    coordinate1: np.ndarray, coordinate2: np.ndarray, transform_matrix_lst: List[np.ndarray]
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Transform two coordinates using a list of transformation matrices.
 
+    Parameters:
+        coordinate1 (numpy.ndarray): The first coordinate to be transformed.
+        coordinate2 (numpy.ndarray): The second coordinate to be transformed.
+        transform_matrix_lst (List[numpy.ndarray]): A list of transformation matrices.
+
+    Returns:
+        Tuple[numpy.ndarray, numpy.ndarray]: A tuple containing the transformed coordinate1 and coordinate2.
+    """
     rospy.loginfo("transform_coordinates")
     rospy.loginfo(f"coordinate1 : {coordinate1}")
     for trans_mat in transform_matrix_lst:
@@ -41,10 +53,8 @@ def transform_coordinates(coordinate1, coordinate2, transform_matrix_lst):
 
 class CoordinateServer:
     def __init__(self):
-        self.mesh_tower = o3d.io.read_triangle_mesh(
-            "../block_recog/mesh/jenga_tower_side_xy_m.stl")
+        self.mesh_tower = o3d.io.read_triangle_mesh("../block_recog/mesh/jenga_tower_side_xy_m.stl")
         self.mesh_tower.compute_vertex_normals()
-
 
         self.tower_transform_initialized = False
         # -------------------------------------------------------------------------
@@ -66,6 +76,21 @@ class CoordinateServer:
         service = rospy.Service("GetWorldCoordinates", GetWorldCoord, self.GetWorldCoordinates)
 
     def find_initial_tower_transform(self):
+        """
+        Finds the initial transformation matrices for the tower.
+
+        This function performs the following steps:
+        1. Masks the input color image to obtain blocks and their masks for each color.
+        2. Builds a clean tower point cloud and stores the point clouds of blocks by color.
+        3. Calculates the transformation matrix to convert the tower point cloud from mesh frame to camera frame.
+        4. Calculates the transformation matrix to convert the camera frame to the world frame using TF.
+        5. Combines the two transformation matrices to get a list of transformation matrices for the tower.
+
+        Note: The function requires self.img_color and self.img_depth to be set with the color and depth images.
+
+        Returns:
+            None
+        """
         rospy.loginfo("find_initial_tower_transform")
 
         colors = ["green", "pink", "yellow", "blue", "violet", "red"]
@@ -79,16 +104,19 @@ class CoordinateServer:
 
         # --------------------------------------------------------------------------
 
-        tower_mask, tower_color = self.get_tower_mask(blocks_mask_by_color, blocks_rgb_by_color)
+        tower_mask, tower_color = func.get_tower_mask(blocks_mask_by_color, blocks_rgb_by_color)
 
         # --------------------------------------------------------------------------
         self.pcd_combined, self.block_pcd_by_color = self.build_clean_tower_pcd_from_blocks(
             blocks_mask_by_color, tower_color, self.img_depth
         )
-        
+
         # --------------------------------------------------------------------------
 
         self.mesh_to_cam_transform_matrix = self.transform_matrix_mesh_to_camera(self.pcd_combined)
+        # Broadcast TF?
+        # Broadcat [mesh -> rgb_camera_link]
+        # Listen [mesh -> world] TF, not doing transform twice
 
         # --------------------------------------------------------------------------
 
@@ -99,20 +127,44 @@ class CoordinateServer:
 
         try:
             (trans_cam_to_world, rot_cam_to_world) = listener.lookupTransform("panda_link0", "rgb_camera_link", rospy.Time(0))
-        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+        except (
+            tf.LookupException,
+            tf.ConnectivityException,
+            tf.ExtrapolationException,
+        ):
             raise
 
         self.cam_to_world_transform_matrix = func.transform_mat_from_trans_rot(trans_cam_to_world, rot_cam_to_world)
 
         rospy.loginfo(f"self.cam_to_world_transform_matrix : {self.cam_to_world_transform_matrix}")
 
-        self.transform_matrix_lst = [self.mesh_to_cam_transform_matrix, self.cam_to_world_transform_matrix]
+        self.transform_matrix_lst = [
+            self.mesh_to_cam_transform_matrix,
+            self.cam_to_world_transform_matrix,
+        ]
 
         self.tower_transform_initialized = True
 
     def capture_flag(self, request):
+        """
+        Captures an image and initializes the tower transformation.
+
+        This function performs the following steps:
+        1. Checks if the image has already been captured; if yes, it returns 'SKIPPED'.
+        2. Sets the flag 'ready_to_capture_image' to True, indicating that an image capture is requested.
+        3. Waits for the image capture to complete with a time threshold of 10 seconds (you may need to adjust this value).
+        4. Calls 'find_initial_tower_transform()' to calculate the initial transformation matrices for the tower.
+        5. If the image capture and transformation calculation are successful, it returns 'SUCCESS'.
+        Otherwise, it returns 'FAILED'.
+
+        Args:
+            request: The service request object (CaptureImageRequest).
+
+        Returns:
+            CaptureImageResponse: The service response object containing the capture status (SUCCESS, FAILED, or SKIPPED).
+        """
         rospy.loginfo("Service CaptureImage")
-        print('capture_flag')
+        print("capture_flag")
 
         resp = CaptureImageResponse()
 
@@ -133,33 +185,55 @@ class CoordinateServer:
         resp.status = resp.FAILED
         return resp
 
-    def image_callback1(self, msg):
-        # Convert ROS images to OpenCV format
+    def image_callback1(self, msg) -> None:
+        """
+        Callback function to receive and store RGB images.
+
+        Parameters:
+            msg (sensor_msgs.msg.Image): The ROS message containing the RGB image.
+
+        Returns:
+            None
+        """
         if self.img_color is None and self.ready_to_capture_image:
             self.img_color = bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
             rospy.logwarn(f"RGB image captured (self.img_color.shape: {self.img_color.shape}))")
 
-    def image_callback2(self, msg):
-        # Convert ROS images to OpenCV format
+    def image_callback2(self, msg) -> None:
+        """
+        Callback function to receive and store depth images.
+
+        Parameters:
+            msg (sensor_msgs.msg.Image): The ROS message containing the depth image.
+
+        Returns:
+            None
+        """
         if self.img_depth is None and self.ready_to_capture_image:
             self.img_depth = bridge.imgmsg_to_cv2(msg, desired_encoding="16UC1")
             rospy.logwarn(f"Depth image captured (self.img_depth.shape: {self.img_depth.shape}))")
 
-    def get_tower_mask(self, blocks_mask_by_color, blocks_rgb_by_color):
-        tower_mask = 0
-        tower_color = 0
-        for mask, color in zip(blocks_mask_by_color, blocks_rgb_by_color):
-            for block_m in mask:
-                tower_mask += block_m
+    def build_clean_tower_pcd_from_blocks(
+        self, blocks_mask_by_color: List[List[np.ndarray]], tower_color: np.ndarray, img_depth: np.ndarray
+    ) -> Tuple[o3d.geometry.PointCloud, List[List[o3d.geometry.PointCloud]]]:
+        """
+        Build a clean tower point cloud from blocks' masks.
 
-            for block_c in color:
-                tower_color += block_c
+        Parameters:
+            blocks_mask_by_color (List[List[np.ndarray]]): A list of lists containing masks for each block color.
+            tower_color (numpy.ndarray): The color image of the tower.
+            img_depth (numpy.ndarray): The depth image of the tower.
 
-        return tower_mask, tower_color
-
-    def build_clean_tower_pcd_from_blocks(self, blocks_mask_by_color, tower_color, img_depth):
+        Returns:
+            Tuple[o3d.geometry.PointCloud, List[List[o3d.geometry.PointCloud]]]: A tuple containing the combined point cloud of the tower and a list of lists containing point clouds for each block color.
+        """
+        #  Get Intrinsic Matrix
         intrinsic = o3d.camera.PinholeCameraIntrinsic()
-        intrinsic.intrinsic_matrix = [[968.813, 0, 1023.83], [0, 968.635, 775.975], [0, 0, 1]]
+        intrinsic.intrinsic_matrix = [
+            [968.813, 0, 1023.83],
+            [0, 968.635, 775.975],
+            [0, 0, 1],
+        ]
 
         blocks_pcd_by_color = []
         all_pcd = []
@@ -172,7 +246,9 @@ class CoordinateServer:
 
                 # Get Each Block's PointCloud
                 pcd = func.get_pointcloud_from_color_depth(
-                    color_image=masked_block_rgb, depth_image=masked_block_depth, intrinsic=intrinsic
+                    color_image=masked_block_rgb,
+                    depth_image=masked_block_depth,
+                    intrinsic=intrinsic,
                 )
 
                 # Remove Outlier Points
@@ -188,14 +264,24 @@ class CoordinateServer:
 
         return pcd_combined, blocks_pcd_by_color
 
-    def transform_matrix_mesh_to_camera(self, pcd_combined):
+    def transform_matrix_mesh_to_camera(self, pcd_combined: o3d.geometry.PointCloud) -> np.ndarray:
+        """
+        Compute the transformation matrix from the combined point cloud to the camera frame.
 
+        Parameters:
+            pcd_combined (open3d.geometry.PointCloud): The combined point cloud.
+
+        Returns:
+            numpy.ndarray: The 4x4 transformation matrix from the combined point cloud to the camera frame.
+        """
         pcd_c = copy.deepcopy(pcd_combined)
         pcd_target = copy.deepcopy(self.mesh_tower.sample_points_uniformly(number_of_points=len(pcd_c.points)))
         rospy.loginfo(f"mesh info : [{pcd_target}]")
         rospy.loginfo("Start ICP")
 
-        source, target, move = copy.deepcopy(func.prepare_icp(pcd_c, pcd_target))
+        source = pcd_c
+        target = pcd_target
+        move = copy.deepcopy(func.prepare_icp_move(source=source, target=target))
         print(move)
 
         trans_init = np.asarray([[0, 0, -1, move[0]], [-1, 0, 0, move[1]], [0, 1, 0, move[2]], [0, 0, 0, 1]])
@@ -205,8 +291,7 @@ class CoordinateServer:
 
         rospy.loginfo(f"camera_to_mesh_matrix: {trans_matrix}")
 
-
-        return np.linalg.inv(trans_matrix)   #camera_to_mesh_matrix, mesh_to_camera_matrix
+        return np.linalg.inv(trans_matrix)  # camera_to_mesh_matrix, mesh_to_camera_matrix
 
     def wait_image(self, time_threshold=10.0):
         rospy.logwarn(f"Wait .... (limit: {time_threshold} secs)")
@@ -222,14 +307,25 @@ class CoordinateServer:
         return False
 
     def GetWorldCoordinates(self, request):
+        """
+        Service function to get world coordinates of a target block.
 
+        This function calculates the world coordinates of the target block based on its color and label.
+        If the tower transformation has not been initialized, the service will return a response with 'success' set to False.
+
+        Args:
+            request: The service request object (GetWorldCoordRequest).
+
+        Returns:
+            GetWorldCoordResponse: The service response object containing the world coordinates of the target block.
+        """
         rospy.loginfo(f"Service GetWorldCoordinates {request.target_block}")
 
         resp = GetWorldCoordResponse()
         resp.success = True
 
         if self.tower_transform_initialized is not True:
-            print('false')
+            print("false")
             resp.success = False
             return resp
 

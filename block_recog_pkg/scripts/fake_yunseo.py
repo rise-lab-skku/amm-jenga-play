@@ -1,13 +1,20 @@
 #!/usr/bin/env python
 
 import rospy
-from block_recog_pkg.srv import GetWorldCoord, GetWorldCoordRequest, GetWorldCoordResponse, CaptureImage, CaptureImageRequest, CaptureImageResponse
+from block_recog_pkg.srv import (
+    GetWorldCoord,
+    GetWorldCoordRequest,
+    # GetWorldCoordResponse,
+    CaptureImage,
+    CaptureImageRequest,
+    # CaptureImageResponse,
+)
 
 rospy.init_node("service_client")
 
-rospy.wait_for_service('CaptureImage')
+rospy.wait_for_service("CaptureImage")
 
-capture_image = rospy.ServiceProxy('CaptureImage', CaptureImage)
+capture_image = rospy.ServiceProxy("CaptureImage", CaptureImage)
 
 request_capture_image = CaptureImageRequest()
 
@@ -20,9 +27,9 @@ elif response.status == response.SUCCESS:
 elif response.status == response.SKIPPED:
     rospy.loginfo("Image Capture Skipped")
 
-rospy.wait_for_service('GetWorldCoordinates')
+rospy.wait_for_service("GetWorldCoordinates")
 
-get_coord = rospy.ServiceProxy('GetWorldCoordinates', GetWorldCoord)
+get_coord = rospy.ServiceProxy("GetWorldCoordinates", GetWorldCoord)
 
 request = GetWorldCoordRequest()
 
