@@ -11,7 +11,7 @@ def img_masking(img_color: np.ndarray, color: str) -> Tuple[List[np.ndarray], Li
     Apply color-based image masking on the input color image.
 
     Parameters:
-        img_color (cv2.Image): The input color image in BGR format.
+        img_color (np.ndarray): The input color image in BGR format.
         color (str): The color to be extracted. It should be one of ["red", "pink", "green", "yellow", "blue", "violet"].
 
     Returns:
@@ -62,8 +62,8 @@ def img_masking(img_color: np.ndarray, color: str) -> Tuple[List[np.ndarray], Li
         img_mask_color = mask_color1 + mask_color2
 
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-        erosion_image_color = cv2.erode(img_mask_color, kernel, iterations=2)  # // make erosion image
-        img_mask_color = cv2.dilate(erosion_image_color, kernel, iterations=2)  # // make dilation image
+        erosion_image_color = cv2.erode(img_mask_color, kernel, iterations=2)  # make erosion image
+        img_mask_color = cv2.dilate(erosion_image_color, kernel, iterations=2)  # make dilation image
 
     else:
         if color == "blue":
@@ -82,8 +82,8 @@ def img_masking(img_color: np.ndarray, color: str) -> Tuple[List[np.ndarray], Li
         img_mask_color = cv2.inRange(img_hsv, lower_color, upper_color)  # 범위내의 픽셀들은 흰색, 나머지 검은색
 
         kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-        erosion_image_color = cv2.erode(img_mask_color, kernel, iterations=1)  # // make erosion image
-        img_mask_color = cv2.dilate(erosion_image_color, kernel, iterations=1)  # // make dilation image
+        erosion_image_color = cv2.erode(img_mask_color, kernel, iterations=2)  # make erosion image
+        img_mask_color = cv2.dilate(erosion_image_color, kernel, iterations=2)  # make dilation image
 
     _, src_bin = cv2.threshold(img_mask_color, 0, 255, cv2.THRESH_OTSU)
 
@@ -94,7 +94,6 @@ def img_masking(img_color: np.ndarray, color: str) -> Tuple[List[np.ndarray], Li
 
     for i in range(1, cnt):  # 각각의 객체 정보에 들어가기 위해 반복문. 범위를 1부터 시작한 이유는 배경을 제외
         (x, y, w, h, area) = stats[i]
-        cen_x, cen_y = map(int, centroids[i])
         block_mask = (labels == i) * img_mask_color
         block_color = cv2.bitwise_and(img_color, img_color, mask=block_mask)
 
@@ -108,9 +107,7 @@ def img_masking(img_color: np.ndarray, color: str) -> Tuple[List[np.ndarray], Li
     return blocks_color, blocks_mask
 
 
-def get_tower_mask(
-    blocks_mask_by_color: List[np.ndarray], blocks_rgb_by_color: List[np.ndarray]
-) -> Tuple[np.ndarray, np.ndarray]:
+def get_tower_mask(blocks_mask_by_color: List[np.ndarray], blocks_rgb_by_color: List[np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
     """
     Generate the combined mask and color image of the tower from blocks.
 
@@ -263,9 +260,7 @@ def transform_blocks(pcd: o3d.geometry.PointCloud, icp_transform: np.ndarray) ->
     return pcd_transformed
 
 
-def get_coordinate(
-    target_block: str, blocks_pcd_by_color: list, transform_matrix: np.ndarray
-) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[bool]]:
+def get_coordinate(target_block: str, blocks_pcd_by_color: list, transform_matrix: np.ndarray) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[bool]]:
     """
     Get the center and tcp target coordinates for a target block.
 
@@ -398,7 +393,6 @@ def coordinate_transform(coordinate: Union[list, np.ndarray], transform_matrix: 
     Returns:
         numpy.ndarray: The new transformed 3D coordinate as a numpy array [x', y', z'].
     """
-    coordinate = copy.deepcopy(coordinate)
     coordinate = np.append(coordinate, 1)
     new_coordinate = np.inner(transform_matrix, coordinate)[:3]
 
@@ -415,11 +409,6 @@ def transform_mat_from_trans_rot(trans: list, rot: list) -> np.ndarray:
 
     Returns:
         numpy.ndarray: The 4x4 transformation matrix.
-
-    Example:
-        trans = [1.0, 2.0, 3.0]
-        rot = [0.7071, 0.0, 0.0, 0.7071]  # Example rotation quaternion
-        transform_matrix = transform_mat_from_trans_rot(trans, rot)
     """
     e1, e2, e3, e4 = rot
     trans_matrix = np.array(

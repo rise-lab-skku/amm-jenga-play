@@ -24,9 +24,7 @@ bridge = CvBridge()
 colors = colors = ["green", "pink", "yellow", "blue", "violet", "red"]
 
 
-def transform_coordinates(
-    coordinate1: np.ndarray, coordinate2: np.ndarray, transform_matrix_lst: List[np.ndarray]
-) -> Tuple[np.ndarray, np.ndarray]:
+def transform_coordinates_to_world(coordinate1: np.ndarray, coordinate2: np.ndarray, transform_matrix_lst: List[np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
     """
     Transform two coordinates using a list of transformation matrices.
 
@@ -38,12 +36,10 @@ def transform_coordinates(
     Returns:
         Tuple[numpy.ndarray, numpy.ndarray]: A tuple containing the transformed coordinate1 and coordinate2.
     """
-    rospy.loginfo("transform_coordinates")
-    rospy.loginfo(f"coordinate1 : {coordinate1}")
+    rospy.loginfo("transform_coordinates_to_world")
+
     for trans_mat in transform_matrix_lst:
         coordinate1 = func.coordinate_transform(coordinate1, trans_mat)
-
-        rospy.loginfo(f"coordinate1 : {coordinate1}")
 
     for trans_mat in transform_matrix_lst:
         coordinate2 = func.coordinate_transform(coordinate2, trans_mat)
@@ -107,9 +103,7 @@ class CoordinateServer:
         tower_mask, tower_color = func.get_tower_mask(blocks_mask_by_color, blocks_rgb_by_color)
 
         # --------------------------------------------------------------------------
-        self.pcd_combined, self.block_pcd_by_color = self.build_clean_tower_pcd_from_blocks(
-            blocks_mask_by_color, tower_color, self.img_depth
-        )
+        self.pcd_combined, self.block_pcd_by_color = self.build_clean_tower_pcd_from_blocks(blocks_mask_by_color, tower_color, self.img_depth)
 
         # --------------------------------------------------------------------------
 
@@ -213,9 +207,7 @@ class CoordinateServer:
             self.img_depth = bridge.imgmsg_to_cv2(msg, desired_encoding="16UC1")
             rospy.logwarn(f"Depth image captured (self.img_depth.shape: {self.img_depth.shape}))")
 
-    def build_clean_tower_pcd_from_blocks(
-        self, blocks_mask_by_color: List[List[np.ndarray]], tower_color: np.ndarray, img_depth: np.ndarray
-    ) -> Tuple[o3d.geometry.PointCloud, List[List[o3d.geometry.PointCloud]]]:
+    def build_clean_tower_pcd_from_blocks(self, blocks_mask_by_color: List[List[np.ndarray]], tower_color: np.ndarray, img_depth: np.ndarray) -> Tuple[o3d.geometry.PointCloud, List[List[o3d.geometry.PointCloud]]]:
         """
         Build a clean tower point cloud from blocks' masks.
 
@@ -227,7 +219,7 @@ class CoordinateServer:
         Returns:
             Tuple[o3d.geometry.PointCloud, List[List[o3d.geometry.PointCloud]]]: A tuple containing the combined point cloud of the tower and a list of lists containing point clouds for each block color.
         """
-        #  Get Intrinsic Matrix
+        #  Get Camera Intrinsic Matrix
         intrinsic = o3d.camera.PinholeCameraIntrinsic()
         intrinsic.intrinsic_matrix = [
             [968.813, 0, 1023.83],
@@ -276,7 +268,6 @@ class CoordinateServer:
         """
         pcd_c = copy.deepcopy(pcd_combined)
         pcd_target = copy.deepcopy(self.mesh_tower.sample_points_uniformly(number_of_points=len(pcd_c.points)))
-        rospy.loginfo(f"mesh info : [{pcd_target}]")
         rospy.loginfo("Start ICP")
 
         source = pcd_c
@@ -291,9 +282,22 @@ class CoordinateServer:
 
         rospy.loginfo(f"camera_to_mesh_matrix: {trans_matrix}")
 
-        return np.linalg.inv(trans_matrix)  # camera_to_mesh_matrix, mesh_to_camera_matrix
+        return np.linalg.inv(trans_matrix)
 
-    def wait_image(self, time_threshold=10.0):
+    def wait_image(self, time_threshold: float = 10.0) -> bool:
+        """
+        Wait for the RGB and depth images to be captured.
+
+        This function waits for the RGB and depth images to be available for a specified time threshold.
+        If both images are captured within the time threshold, the function returns True.
+        If the time threshold is reached and the images are not captured, the function returns False.
+
+        Args:
+            time_threshold (float): The maximum time to wait for the images to be captured, in seconds. Default is 10.0.
+
+        Returns:
+            bool: True if both RGB and depth images are captured within the time threshold, False otherwise.
+        """
         rospy.logwarn(f"Wait .... (limit: {time_threshold} secs)")
         start_time = time.time()
 
@@ -339,6 +343,7 @@ class CoordinateServer:
         target_block_color, target_block_label = request.target_block.split()
         blocks_pcd_by_color = self.block_pcd_by_color
 
+        # coordinates of jenga tower
         if target_block_color == "init":
             if int(target_block_label) == 1:
                 coordinate1 = np.array([0.0375, 0.0375, 0])
@@ -351,11 +356,9 @@ class CoordinateServer:
 
         else:
             # CENTER, TARGET, PUSH
-            coordinate1, coordinate2, push = func.get_coordinate(
-                request.target_block, blocks_pcd_by_color, self.camera_to_mesh_matrix
-            )
+            coordinate1, coordinate2, push = func.get_coordinate(request.target_block, blocks_pcd_by_color, self.camera_to_mesh_matrix)
 
-        coordinate1, coordinate2 = transform_coordinates(coordinate1, coordinate2, self.transform_matrix_lst)
+        coordinate1, coordinate2 = transform_coordinates_to_world(coordinate1, coordinate2, self.transform_matrix_lst)
 
         resp.center_x = coordinate1[0]
         resp.center_y = coordinate1[1]
@@ -369,6 +372,6 @@ class CoordinateServer:
 
 
 if __name__ == "__main__":
-    rospy.init_node("service_server_node")  # 노드 초기화
+    rospy.init_node("service_server_node")  # init node
     coordinate_server = CoordinateServer()
     rospy.spin()
