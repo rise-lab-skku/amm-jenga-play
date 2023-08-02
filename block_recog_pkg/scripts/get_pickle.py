@@ -9,8 +9,7 @@ from cv_bridge import CvBridge
 bridge = CvBridge()
 
 
-def image_callback1(msg):
-    # Convert ROS images to OpenCV format
+def image_callback_rgb(msg):
     img_color = bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
 
     # Save pickle
@@ -18,8 +17,7 @@ def image_callback1(msg):
         pickle.dump(img_color, rgb)
 
 
-def image_callback2(msg):
-    # Convert ROS images to OpenCV format
+def image_callback_depth(msg):
     img_depth = bridge.imgmsg_to_cv2(msg, desired_encoding="16UC1")
 
     # Save pickle
@@ -28,9 +26,7 @@ def image_callback2(msg):
 
 
 if __name__ == "__main__":
-    rospy.init_node("request_node")  # 노드 초기화
-
-    rospy.Subscriber("/rgb/image_raw", Image, image_callback1)
-    rospy.Subscriber("/depth_to_rgb/image_raw", Image, image_callback2)
-
+    rospy.init_node("request_node")
+    rospy.Subscriber("/rgb/image_raw", Image, image_callback_rgb)
+    rospy.Subscriber("/depth_to_rgb/image_raw", Image, image_callback_depth)
     rospy.spin()

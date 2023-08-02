@@ -21,10 +21,12 @@ import copy
 
 bridge = CvBridge()
 
-colors = colors = ["green", "pink", "yellow", "blue", "violet", "red"]
+colors = ["green", "pink", "yellow", "blue", "violet", "red"]
 
 
-def transform_coordinates_to_world(coordinate1: np.ndarray, coordinate2: np.ndarray, transform_matrix_lst: List[np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
+def transform_coordinates_to_world(
+    coordinate1: np.ndarray, coordinate2: np.ndarray, transform_matrix_lst: List[np.ndarray]
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Transform two coordinates using a list of transformation matrices.
 
@@ -48,6 +50,25 @@ def transform_coordinates_to_world(coordinate1: np.ndarray, coordinate2: np.ndar
 
 
 class CoordinateServer:
+    """A class that provides services to capture RGB and depth images and obtain target block's world coordinates.
+
+    Attributes:
+        mesh_tower (open3d.geometry.TriangleMesh): The mesh of the jenga tower.
+        tower_transform_initialized (bool): Flag indicating whether the tower's transformation is initialized.
+        img_depth (numpy.ndarray): The depth image captured from the camera.
+        img_color (numpy.ndarray): The RGB image captured from the camera.
+        ready_to_capture_image (bool): Flag indicating whether the server is ready to capture images.
+        capture_once (int): Counter to ensure single image capture.
+
+    Subscribers:
+        /rgb/image_raw (sensor_msgs.Image): Subscriber for RGB images from the camera.
+        /depth_to_rgb/image_raw (sensor_msgs.Image): Subscriber for depth images from the camera.
+
+    Services:
+        CaptureImage (block_recog.srv.CaptureImage): Service to capture RGB and depth images.
+        GetWorldCoordinates (block_recog.srv.GetWorldCoord): Service to obtain world coordinates for a target block.
+    """
+
     def __init__(self):
         self.mesh_tower = o3d.io.read_triangle_mesh("../block_recog/mesh/jenga_tower_side_xy_m.stl")
         self.mesh_tower.compute_vertex_normals()
@@ -99,7 +120,9 @@ class CoordinateServer:
 
         tower_mask, tower_color = func.get_tower_mask(blocks_mask_by_color, blocks_rgb_by_color)
 
-        self.pcd_combined, self.block_pcd_by_color = self.build_clean_tower_pcd_from_blocks(blocks_mask_by_color, tower_color, self.img_depth)
+        self.pcd_combined, self.block_pcd_by_color = self.build_clean_tower_pcd_from_blocks(
+            blocks_mask_by_color, tower_color, self.img_depth
+        )
 
         self.mesh_to_cam_transform_matrix = self.transform_matrix_mesh_to_camera(self.pcd_combined)
         # Broadcast TF?
@@ -199,7 +222,9 @@ class CoordinateServer:
             self.img_depth = bridge.imgmsg_to_cv2(msg, desired_encoding="16UC1")
             rospy.logwarn(f"Depth image captured (self.img_depth.shape: {self.img_depth.shape}))")
 
-    def build_clean_tower_pcd_from_blocks(self, blocks_mask_by_color: List[List[np.ndarray]], tower_color: np.ndarray, img_depth: np.ndarray) -> Tuple[o3d.geometry.PointCloud, List[List[o3d.geometry.PointCloud]]]:
+    def build_clean_tower_pcd_from_blocks(
+        self, blocks_mask_by_color: List[List[np.ndarray]], tower_color: np.ndarray, img_depth: np.ndarray
+    ) -> Tuple[o3d.geometry.PointCloud, List[List[o3d.geometry.PointCloud]]]:
         """
         Build a clean tower point cloud from blocks' masks.
 
@@ -211,7 +236,8 @@ class CoordinateServer:
         Returns:
             Tuple[o3d.geometry.PointCloud, List[List[o3d.geometry.PointCloud]]]: A tuple containing the combined point cloud of the tower and a list of lists containing point clouds for each block color.
         """
-        #  Get Camera Intrinsic Matrix
+        # Get Camera Intrinsic Matrix
+        # Subscribe 'rgb/camera_info' K ???
         intrinsic = o3d.camera.PinholeCameraIntrinsic()
         intrinsic.intrinsic_matrix = [
             [968.813, 0, 1023.83],
@@ -265,7 +291,6 @@ class CoordinateServer:
         source = pcd_c
         target = pcd_target
         move = copy.deepcopy(func.prepare_icp_move(source=source, target=target))
-        print(move)
 
         trans_init = np.asarray([[0, 0, -1, move[0]], [-1, 0, 0, move[1]], [0, 1, 0, move[2]], [0, 0, 0, 1]])
         trans_matrix = func.do_ICP(source, target, trans_init)
@@ -348,7 +373,9 @@ class CoordinateServer:
 
         else:
             # CENTER, TARGET, PUSH
-            coordinate1, coordinate2, push = func.get_coordinate(request.target_block, blocks_pcd_by_color, self.camera_to_mesh_matrix)
+            coordinate1, coordinate2, push = func.get_coordinate(
+                request.target_block, blocks_pcd_by_color, self.camera_to_mesh_matrix
+            )
 
         coordinate1, coordinate2 = transform_coordinates_to_world(coordinate1, coordinate2, self.transform_matrix_lst)
 

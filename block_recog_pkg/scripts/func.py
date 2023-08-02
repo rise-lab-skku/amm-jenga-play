@@ -33,17 +33,17 @@ def img_masking(img_color: np.ndarray, color: str) -> Tuple[List[np.ndarray], Li
     lower_pink2 = np.array([150, 15, 200])
     upper_pink2 = np.array([179, 80, 255])
     # GREEN
-    lower_green = (70 - 20, 100, 100)
-    upper_green = (70 + 15, 255, 255)
+    lower_green = np.array([70 - 20, 100, 100])
+    upper_green = np.array([70 + 15, 255, 255])
     # YELLOW
-    lower_yellow = (30 - 10, 60, 120)
-    upper_yellow = (30 + 10, 255, 255)
+    lower_yellow = np.array([30 - 10, 60, 120])
+    upper_yellow = np.array([30 + 10, 255, 255])
     # BLUE
-    lower_blue = (100 - 10, 100, 100)
-    upper_blue = (100 + 9, 255, 255)
+    lower_blue = np.array([100 - 10, 100, 100])
+    upper_blue = np.array([100 + 9, 255, 255])
     # VIOLET
-    lower_violet = (130 - 20, 60, 60)
-    upper_violet = (130 + 30, 120, 130)
+    lower_violet = np.array([130 - 20, 60, 60])
+    upper_violet = np.array([130 + 30, 120, 130])
 
     if color == "pink" or color == "red":
         if color == "pink":
@@ -103,7 +103,9 @@ def img_masking(img_color: np.ndarray, color: str) -> Tuple[List[np.ndarray], Li
     return blocks_color, blocks_mask
 
 
-def get_tower_mask(blocks_mask_by_color: List[np.ndarray], blocks_rgb_by_color: List[np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
+def get_tower_mask(
+    blocks_mask_by_color: List[np.ndarray], blocks_rgb_by_color: List[np.ndarray]
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Generate the combined mask and color image of the tower from blocks.
 
@@ -256,7 +258,9 @@ def transform_blocks(pcd: o3d.geometry.PointCloud, icp_transform: np.ndarray) ->
     return pcd_transformed
 
 
-def get_coordinate(target_block: str, blocks_pcd_by_color: list, transform_matrix: np.ndarray) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[bool]]:
+def get_coordinate(
+    target_block: str, blocks_pcd_by_color: list, transform_matrix: np.ndarray
+) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[bool]]:
     """
     Get the center and tcp target coordinates for a target block.
 
@@ -290,6 +294,8 @@ def get_coordinate(target_block: str, blocks_pcd_by_color: list, transform_matri
             box_extent = pcd_new.get_axis_aligned_bounding_box().get_extent()
 
             center_coordinate = np.array(pcd_new.get_axis_aligned_bounding_box().get_box_points()).mean(axis=0)
+            
+            # floors = int(center_coordinate[2] // 0.015)
 
             x_mean = np.array(pcd_new.get_axis_aligned_bounding_box().get_box_points())[:, 0].mean()
             y_mean = np.array(pcd_new.get_axis_aligned_bounding_box().get_box_points())[:, 1].mean()
