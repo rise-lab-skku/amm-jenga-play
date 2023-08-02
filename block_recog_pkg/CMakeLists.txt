@@ -58,6 +58,7 @@ add_service_files(
   FILES
   GetWorldCoord.srv
   CaptureImage.srv
+  GetDiceColor.srv
 )
 
 ## Generate actions in the 'action' folder

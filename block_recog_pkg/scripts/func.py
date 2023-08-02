@@ -61,10 +61,6 @@ def img_masking(img_color: np.ndarray, color: str) -> Tuple[List[np.ndarray], Li
         mask_color2 = cv2.inRange(img_hsv, lower_color2, upper_color2)
         img_mask_color = mask_color1 + mask_color2
 
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-        erosion_image_color = cv2.erode(img_mask_color, kernel, iterations=2)  # make erosion image
-        img_mask_color = cv2.dilate(erosion_image_color, kernel, iterations=2)  # make dilation image
-
     else:
         if color == "blue":
             lower_color = lower_blue
@@ -81,9 +77,9 @@ def img_masking(img_color: np.ndarray, color: str) -> Tuple[List[np.ndarray], Li
 
         img_mask_color = cv2.inRange(img_hsv, lower_color, upper_color)  # 범위내의 픽셀들은 흰색, 나머지 검은색
 
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-        erosion_image_color = cv2.erode(img_mask_color, kernel, iterations=2)  # make erosion image
-        img_mask_color = cv2.dilate(erosion_image_color, kernel, iterations=2)  # make dilation image
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    erosion_image_color = cv2.erode(img_mask_color, kernel, iterations=2)  # make erosion image
+    img_mask_color = cv2.dilate(erosion_image_color, kernel, iterations=2)  # make dilation image
 
     _, src_bin = cv2.threshold(img_mask_color, 0, 255, cv2.THRESH_OTSU)
 

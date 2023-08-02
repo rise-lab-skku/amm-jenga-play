@@ -53,7 +53,6 @@ class CoordinateServer:
         self.mesh_tower.compute_vertex_normals()
 
         self.tower_transform_initialized = False
-        # -------------------------------------------------------------------------
 
         self.img_depth = None
         self.img_color = None
@@ -62,8 +61,8 @@ class CoordinateServer:
         self.capture_once = 0
 
         rospy.logwarn("Define subscribers")
-        rospy.Subscriber("/rgb/image_raw", Image, self.image_callback1)
-        rospy.Subscriber("/depth_to_rgb/image_raw", Image, self.image_callback2)
+        rospy.Subscriber("/rgb/image_raw", Image, self.image_callback_rgb)
+        rospy.Subscriber("/depth_to_rgb/image_raw", Image, self.image_callback_depth)
 
         # rospy.logwarn("Define capture service")
         capture_service = rospy.Service("CaptureImage", CaptureImage, self.capture_flag)
@@ -98,21 +97,14 @@ class CoordinateServer:
             blocks_rgb_by_color.append(blocks_color)
             blocks_mask_by_color.append(blocks_mask)
 
-        # --------------------------------------------------------------------------
-
         tower_mask, tower_color = func.get_tower_mask(blocks_mask_by_color, blocks_rgb_by_color)
 
-        # --------------------------------------------------------------------------
         self.pcd_combined, self.block_pcd_by_color = self.build_clean_tower_pcd_from_blocks(blocks_mask_by_color, tower_color, self.img_depth)
-
-        # --------------------------------------------------------------------------
 
         self.mesh_to_cam_transform_matrix = self.transform_matrix_mesh_to_camera(self.pcd_combined)
         # Broadcast TF?
         # Broadcat [mesh -> rgb_camera_link]
         # Listen [mesh -> world] TF, not doing transform twice
-
-        # --------------------------------------------------------------------------
 
         # Wait for lookupTransform to become available
         listener = tf.TransformListener()
@@ -179,7 +171,7 @@ class CoordinateServer:
         resp.status = resp.FAILED
         return resp
 
-    def image_callback1(self, msg) -> None:
+    def image_callback_rgb(self, msg) -> None:
         """
         Callback function to receive and store RGB images.
 
@@ -193,7 +185,7 @@ class CoordinateServer:
             self.img_color = bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
             rospy.logwarn(f"RGB image captured (self.img_color.shape: {self.img_color.shape}))")
 
-    def image_callback2(self, msg) -> None:
+    def image_callback_depth(self, msg) -> None:
         """
         Callback function to receive and store depth images.
 
