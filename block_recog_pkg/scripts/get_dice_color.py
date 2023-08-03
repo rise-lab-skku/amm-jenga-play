@@ -5,7 +5,10 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 import cv2
 import numpy as np
+import time
 from block_recog_pkg.srv import GetDiceColor, GetDiceColorResponse
+
+bridge = CvBridge()
 
 
 def detect_dice_color(img_dice: np.ndarray) -> str:
@@ -97,40 +100,49 @@ def detect_dice_color(img_dice: np.ndarray) -> str:
 
 
 class DiceServer:
-    """
-    A ROS server to detect the color of a dice from a RGB image.
-
-    The DiceServer class subscribes to the "/rgb/image_raw" topic to receive RGB image messages,
-    and provides a service "GetDiceColor" that returns the color of the detected dice.
-
-    Attributes:
-        dice_color (str): The color of the detected dice ('green', 'pink', 'yellow', 'blue', 'violet', or 'red').
-
-    Methods:
-        image_callback(msg): Callback function to process the received RGB image message.
-        dice_color_response(request): Service callback function to respond with the detected dice color.
-    """
     def __init__(self):
         rospy.logwarn("Get Color from Dice")
+
+        self.ready_to_capture_image = False
+
         rospy.Subscriber("/rgb/image_raw", Image, self.image_callback)
         dice_service = rospy.Service("GetDiceColor", GetDiceColor, self.dice_color_response)
 
     def image_callback(self, msg):
-        bridge = CvBridge()
         try:
-            # Convert the ROS Image message to a OpenCV image
-            dice_image = bridge.imgmsg_to_cv2(msg, "bgr8")
-
-            # Detect the dice and its color
-            self.dice_color = detect_dice_color(dice_image)
-            print("Dice color:", self.dice_color)
+            if self.ready_to_capture_image:
+                self.img_dice = bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
+                rospy.logwarn(f"RGB image captured (self.img_color.shape: {self.img_dice.shape}))")
 
         except Exception as e:
             print(e)
 
+    def wait_image(self, time_threshold: float = 10.0) -> bool:
+        rospy.logwarn(f"Wait .... (limit: {time_threshold} secs)")
+        start_time = time.time()
+
+        while time.time() - start_time < time_threshold:
+            if self.img_dice is not None:
+                rospy.loginfo("Captured!!!")
+                return True
+            rospy.sleep(1)
+            rospy.loginfo("\twait..")
+        rospy.logwarn("...Failed...")
+        return False
+
     def dice_color_response(self, request):
         resp = GetDiceColorResponse()
-        resp.dice_color = self.dice_color
+
+        self.ready_to_capture_image = True
+        capture_is_success = self.wait_image(time_threshold=10)
+
+        if capture_is_success:
+            resp.success = True
+            dice_color = detect_dice_color(self.img_dice)
+            resp.dice_color = dice_color
+            return resp
+
+        resp.success = False
         return resp
 
 
