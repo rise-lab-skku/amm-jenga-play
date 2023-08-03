@@ -70,7 +70,7 @@ class CoordinateServer:
     """
 
     def __init__(self):
-        self.mesh_tower = o3d.io.read_triangle_mesh("../block_recog/mesh/jenga_tower_side_xy_m.stl")
+        self.mesh_tower = o3d.io.read_triangle_mesh("../block_recog/mesh/jenga_tower_side_xy_m.stl")  # Jenga Tower Mesh
         self.mesh_tower.compute_vertex_normals()
 
         self.tower_transform_initialized = False
@@ -89,7 +89,7 @@ class CoordinateServer:
         capture_service = rospy.Service("CaptureImage", CaptureImage, self.capture_flag)
 
         # rospy.logwarn("Define get world coordinate service")
-        service = rospy.Service("GetWorldCoordinates", GetWorldCoord, self.GetWorldCoordinates)
+        block_coordinate_service = rospy.Service("GetWorldCoordinates", GetWorldCoord, self.GetWorldCoordinates)
 
     def find_initial_tower_transform(self):
         """
@@ -145,14 +145,14 @@ class CoordinateServer:
 
         self.cam_to_world_transform_matrix = func.transform_mat_from_trans_rot(trans_cam_to_world, rot_cam_to_world)
 
-        rospy.loginfo(f"self.cam_to_world_transform_matrix : {self.cam_to_world_transform_matrix}")
+        rospy.loginfo(f"cam_to_world_transform_matrix : {self.cam_to_world_transform_matrix}")
 
         self.transform_matrix_lst = [
             self.mesh_to_cam_transform_matrix,
             self.cam_to_world_transform_matrix,
         ]
 
-        self.tower_transform_initialized = True
+        self.tower_transform_initialized = True  # Done calculating Transform Matrices
 
     def capture_flag(self, request):
         """
@@ -183,7 +183,7 @@ class CoordinateServer:
 
         self.ready_to_capture_image = True
         is_success = self.wait_image(time_threshold=10)
-        is_success = True
+        # is_success = True
 
         if is_success:
             self.find_initial_tower_transform()
@@ -248,7 +248,7 @@ class CoordinateServer:
         blocks_pcd_by_color = []
         all_pcd = []
         for color, block_mask in zip(colors, blocks_mask_by_color):
-            rospy.loginfo(f"build_clean_tower_pcd_from_blocks. color: {color}, len(block_mask): {len(block_mask)}")
+            rospy.loginfo(f"Number of Blocks -> Color: {color}, Recognized Block Numbers: {len(block_mask)}")
             blocks_pcd = []
             for msk in block_mask:
                 masked_block_rgb = cv2.bitwise_and(tower_color, tower_color, mask=msk)
@@ -265,8 +265,6 @@ class CoordinateServer:
                 pcd, _ = pcd.remove_radius_outlier(256, 0.025)
                 blocks_pcd.append(pcd)
                 all_pcd.append(pcd)
-
-                rospy.loginfo(f"pcd info : {pcd}")
 
             blocks_pcd_by_color.append(blocks_pcd)
 
@@ -286,20 +284,21 @@ class CoordinateServer:
         """
         pcd_c = copy.deepcopy(pcd_combined)
         pcd_target = copy.deepcopy(self.mesh_tower.sample_points_uniformly(number_of_points=len(pcd_c.points)))
-        rospy.loginfo("Start ICP")
+        rospy.loginfo("Start ICP ...")
 
         source = pcd_c
         target = pcd_target
         move = copy.deepcopy(func.prepare_icp_move(source=source, target=target))
 
         trans_init = np.asarray([[0, 0, -1, move[0]], [-1, 0, 0, move[1]], [0, 1, 0, move[2]], [0, 0, 0, 1]])
-        trans_matrix = func.do_ICP(source, target, trans_init)
+        trans_matrix = func.do_ICP(source, target, trans_init)  # Transform Matrix (Camera -> Mesh)
 
         self.camera_to_mesh_matrix = trans_matrix
 
+        rospy.loginfo("Done ICP")
         rospy.loginfo(f"camera_to_mesh_matrix: {trans_matrix}")
 
-        return np.linalg.inv(trans_matrix)
+        return np.linalg.inv(trans_matrix)  # Transform Matrix (Mesh -> Camera)
 
     def wait_image(self, time_threshold: float = 10.0) -> bool:
         """
@@ -350,8 +349,8 @@ class CoordinateServer:
             resp.success = False
             return resp
 
-        # is_success = self.wait_image(time_threshold=10.0)
-        is_success = True
+        is_success = self.wait_image(time_threshold=10.0)
+        # is_success = True
 
         if is_success is not True:
             resp.success = False

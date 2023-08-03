@@ -8,6 +8,9 @@ from block_recog_pkg.srv import (
     CaptureImage,
     CaptureImageRequest,
     # CaptureImageResponse,
+    GetDiceColor,
+    GetDiceColorRequest,
+    # GetDiceColorResponse
 )
 
 rospy.init_node("service_client")
@@ -45,5 +48,14 @@ print(response.target_x)
 print(response.target_y)
 print(response.target_z)
 print(response.push)
+
+get_dice_color = rospy.ServiceProxy("GetDiceColor", GetDiceColor)
+
+request_dice_color = GetDiceColorRequest()
+
+response_dice_color = get_dice_color(request_dice_color)
+
+if response_dice_color.success:
+    dice_color = response_dice_color.dice_color
 
 rospy.spin()

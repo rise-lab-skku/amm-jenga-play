@@ -294,7 +294,7 @@ def get_coordinate(
             box_extent = pcd_new.get_axis_aligned_bounding_box().get_extent()
 
             center_coordinate = np.array(pcd_new.get_axis_aligned_bounding_box().get_box_points()).mean(axis=0)
-            
+
             # floors = int(center_coordinate[2] // 0.015)
 
             x_mean = np.array(pcd_new.get_axis_aligned_bounding_box().get_box_points())[:, 0].mean()
