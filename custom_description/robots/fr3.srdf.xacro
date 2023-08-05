@@ -53,6 +53,6 @@
     <disable_default_collisions link="$(arg arm_id)_base"/>
     <enable_collisions link1="$(arg arm_id)_base" link2="$(arg arm_id)_hand_sc" />
 
-    <end_effector name="$(arg arm_id)_pusher" parent_link="$(arg arm_id)_hand_push-tcp" group="gripper" />
-    <end_effector name="$(arg arm_id)_grasper" parent_link="$(arg arm_id)_hand_grasp-tcp" group="gripper" />
+    <!-- <end_effector name="$(arg arm_id)_pusher" parent_link="$(arg arm_id)_hand_push-tcp" group="gripper" />
+    <end_effector name="$(arg arm_id)_grasper" parent_link="$(arg arm_id)_hand_grasp-tcp" group="gripper" /> -->
 </robot>

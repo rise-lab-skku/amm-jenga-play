@@ -10,7 +10,7 @@
         joint_limits="${xacro.load_yaml('$(find franka_description)/robots/fr3/joint_limits.yaml')}"
         gazebo="false"
     />
-    <xacro:if></xacro:if>
+
     <xacro:custom_hand
         arm_id="$(arg arm_id)"
         tcp_xyz="0 0 0.0934"
