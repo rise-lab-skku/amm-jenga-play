@@ -1,7 +1,7 @@
 <launch>
 
   <!-- This file makes it easy to include the settings for sensor managers -->
-
+  <arg name="moveit_sensor_manager" />
   <!-- Params for 3D sensors config: '' | pointcloud | depthmap -->
   <arg name="sensor_type" default="" />
   <rosparam if="$(eval arg('sensor_type')  != '')" command="load" file="$(find fr3_moveit_config)/config/sensors_kinect_$(arg sensor_type).yaml" />

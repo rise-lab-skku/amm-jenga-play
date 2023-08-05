@@ -86,7 +86,7 @@ class MoveitPython(object):
         # arm planning group.
         # This interface can be used to plan and execute motions:
         #group_name = "panda_arm" to make TCP as Panda_manipulaotor new fingert tip
-        self.group_name = "panda_manipulator"
+        self.group_name = "arm"
         move_group = moveit_commander.MoveGroupCommander(self.group_name)
         #print(dir(move_group))
         #print(move_group.get_goal_joint_tolerance())
@@ -123,7 +123,7 @@ class MoveitPython(object):
         # We can get a list of all the groups in the robot:
         group_names = robot.get_group_names()
         print("============ Available Planning Groups:", robot.get_group_names())
-
+        print(f"\n\n\n{move_group.get_pose_reference_frame()}\n\n\n")
         # Sometimes for debugging it is useful to print the entire state of the
         # robot:
         print("============ Printing robot state")
