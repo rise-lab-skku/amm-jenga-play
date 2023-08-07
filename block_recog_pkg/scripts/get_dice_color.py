@@ -134,9 +134,9 @@ class DiceServer:
         resp = GetDiceColorResponse()
 
         self.ready_to_capture_image = True
-        capture_is_success = self.wait_image(time_threshold=10)
+        is_caputre_success = self.wait_image(time_threshold=10)
 
-        if capture_is_success:
+        if is_caputre_success:
             resp.success = True
             dice_color = detect_dice_color(self.img_dice)
             resp.dice_color = dice_color
