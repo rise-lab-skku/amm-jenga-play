@@ -48,6 +48,7 @@ print(response.target_x)
 print(response.target_y)
 print(response.target_z)
 print(response.push)
+print(response.tower_map.data)
 
 get_dice_color = rospy.ServiceProxy("GetDiceColor", GetDiceColor)
 

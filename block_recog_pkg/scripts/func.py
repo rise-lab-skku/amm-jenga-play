@@ -17,7 +17,8 @@ def img_masking(img_color: np.ndarray, color: str) -> Tuple[List[np.ndarray], Li
         color (str): The color to be extracted. It should be one of ["red", "pink", "green", "yellow", "blue", "violet"].
 
     Returns:
-        Tuple[List[np.ndarray], List[np.ndarray]]: A tuple containing lists of extracted color blocks and their corresponding masks.
+        Tuple[List[np.ndarray], List[np.ndarray]]:
+        A tuple containing lists of extracted color blocks and their corresponding masks.
             The first list contains the extracted color blocks as numpy arrays.
             The second list contains the corresponding binary masks for each color block.
     """
@@ -80,7 +81,7 @@ def img_masking(img_color: np.ndarray, color: str) -> Tuple[List[np.ndarray], Li
             lower_color = lower_yellow
             upper_color = upper_yellow
 
-        img_mask_color = cv2.inRange(img_hsv, lower_color, upper_color)  # 범위내의 픽셀들은 흰색, 나머지 검은색
+        img_mask_color = cv2.inRange(img_hsv, lower_color, upper_color)  # The pixels in the range are white, the rest are black
 
     # Erosion, Dilation for Denoising
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
@@ -213,7 +214,9 @@ def build_clean_tower_pcd_from_blocks(
         img_depth (numpy.ndarray): The depth image of the tower.
 
     Returns:
-        Tuple[o3d.geometry.PointCloud, List[List[o3d.geometry.PointCloud]]]: A tuple containing the combined point cloud of the tower and a list of lists containing point clouds for each block color.
+        Tuple[o3d.geometry.PointCloud, List[List[o3d.geometry.PointCloud]]]:
+        A tuple containing the combined point cloud of the tower
+        and a list of lists containing point clouds for each block color.
     """
     # Get Camera Intrinsic Matrix
     # Subscribe 'rgb/camera_info' K ???
@@ -364,32 +367,40 @@ def transform_blocks(pcd: o3d.geometry.PointCloud, transform_matrix: np.ndarray)
     return pcd_transformed
 
 
-def get_coordinate(
+def get_coordinates(
     target_block: str, blocks_pcd_by_color: list, transform_matrix: np.ndarray
-) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[bool]]:
+) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[bool], Optional[np.ndarray]]:
     """
-    Get the center and tcp target coordinates for a target block.
+    Get the center and TCP (Tool Center Point) target coordinates for a target block.
 
     Parameters:
         target_block (str): The target block in the format "<color> <label>", e.g., "green 0".
         blocks_pcd_by_color (list): A list of PointClouds grouped by color.
-        trans (numpy.ndarray): The transformation matrix used for the target block.
+        transform_matrix (numpy.ndarray): The 4x4 transformation matrix used for the target block.
 
     Returns:
-        Tuple[Optional[numpy.ndarray], Optional[numpy.ndarray], Optional[bool]]: A tuple containing the center coordinate,
-        the target coordinate, and a boolean indicating whether the block should be pushed (True) or pulled (False).
-        If the block does not match any of the conditions, all values will be None.
+        Tuple[Optional[numpy.ndarray], Optional[numpy.ndarray], Optional[bool], Optional[numpy.ndarray]]:
+        A tuple containing the center coordinate, the TCP target coordinate,
+        a boolean indicating whether the block should be pushed (True) or pulled (False),
+        and an array representing the tower map. If the block does not match any of the conditions, all values will be None.
     """
     # Target Block
     target_block_color, target_block_label = target_block.split()  # e.g. 'green', '0'
 
     colors = ["green", "pink", "yellow", "blue", "violet", "red"]
 
+    # Define full tower map (12, 3)
+    tower_map = [[255 for _ in range(3)] for _ in range(12)]
+
     # Get Target Block's Coordinates
-    for col, pcds in zip(colors, blocks_pcd_by_color):
-        if col != target_block_color:
+    for color_idx, (col, pcds) in enumerate(zip(colors, blocks_pcd_by_color)):
+        if target_block_color == "init":
+            pass
+        elif col != target_block_color:
             continue
         for idx, pcd in enumerate(pcds):
+            if target_block_color == "init":
+                pass
             if idx != int(target_block_label):
                 continue
 
@@ -407,94 +418,107 @@ def get_coordinate(
                 axis=0
             )
 
-            # floors = int(aabb_center_coordinate[2] // 0.015)
-
             # AABB center coordinate x, y, z
             x_mean = aabb_center_coordinate[0]
             y_mean = aabb_center_coordinate[1]
             z_mean = aabb_center_coordinate[2]
 
+            floors = int(z_mean // 0.015)
+            true_z = floors * 0.015 + 0.0075
+
             if box_extent[1] > 0.070:
-                print("PULL DIRECTION : X")
+                # print("PULL DIRECTION : X")
                 push = False
 
                 cen_x = x_mean
                 cen_y = y_mean
-                cen_z = z_mean
+                cen_z = true_z
 
                 target_x = cen_x + 0.120
                 target_y = cen_y
                 target_z = cen_z
 
+                tower_map[floors][0] = color_idx
+
             elif box_extent[0] > 0.070:
-                print("PULL DIRECTION : Y")
+                # print("PULL DIRECTION : Y")
                 push = False
 
                 cen_x = x_mean
                 cen_y = y_mean
-                cen_z = z_mean
+                cen_z = true_z
 
                 target_x = cen_x
                 target_y = cen_y + 0.120
                 target_z = cen_z
 
+                tower_map[floors][0] = color_idx
+
             elif abs(aabb_center_coordinate[0]) < 0.010 and box_extent[1] < 0.015:
-                print("PUSH DIRECTION : Y or -Y")
+                # print("PUSH DIRECTION : Y or -Y")
                 push = True
 
                 cen_x = x_mean
                 cen_y = y_mean - 0.075 / 2
-                cen_z = z_mean
+                cen_z = true_z
 
                 target_x = cen_x
                 target_y = cen_y + 0.120
                 target_z = cen_z
 
+                tower_map[floors][1] = color_idx
+
             elif abs(aabb_center_coordinate[1]) < 0.010 and box_extent[0] < 0.015:
-                print("PUSH DIRECTION : X or -X")
+                # print("PUSH DIRECTION : X or -X")
                 push = True
 
                 cen_x = x_mean - 0.075 / 2
                 cen_y = y_mean
-                cen_z = z_mean
+                cen_z = true_z
 
                 target_x = cen_x + 0.120
                 target_y = cen_y
                 target_z = cen_z
 
+                tower_map[floors][1] = color_idx
+
             elif box_extent[1] < 0.015:
-                print("PULL DIRECTION : -X")
+                # print("PULL DIRECTION : -X")
                 push = False
 
                 cen_x = x_mean
                 cen_y = y_mean - 0.075 / 2
-                cen_z = z_mean
+                cen_z = true_z
 
                 target_x = cen_x - 0.120
                 target_y = cen_y
                 target_z = cen_z
 
+                tower_map[floors][2] = color_idx
+
             elif box_extent[0] < 0.015:
-                print("PULL DIRECTION : -Y")
+                # print("PULL DIRECTION : -Y")
                 push = False
 
                 cen_x = x_mean - 0.075 / 2
                 cen_y = y_mean
-                cen_z = z_mean
+                cen_z = true_z
 
                 target_x = cen_x
                 target_y = cen_y - 0.120
                 target_z = cen_z
 
+                tower_map[floors][2] = color_idx
+
             else:
                 print("Cannot Find Box Coordinates")
 
-                return None, None, None
+                return None, None, None, None
 
     block_center_coordinate = np.array([cen_x, cen_y, cen_z])  # / 1000
     tcp_target_coordinate = np.array([target_x, target_y, target_z])  # / 1000
 
-    return block_center_coordinate, tcp_target_coordinate, push
+    return block_center_coordinate, tcp_target_coordinate, push, np.array(tower_map)
 
 
 def coordinate_transform(coordinate3D: np.ndarray, transform_matrix: np.ndarray) -> np.ndarray:

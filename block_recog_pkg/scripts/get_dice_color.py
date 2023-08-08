@@ -48,7 +48,7 @@ def detect_dice_color(img_dice: np.ndarray) -> str:
     lower_violet = np.array([130 - 20, 60, 60])
     upper_violet = np.array([130 + 20, 255, 255])
 
-    domintant_color_area = -1
+    domintant_color_area = 1
     dominant_color = None
 
     for color in colors:
@@ -137,10 +137,11 @@ class DiceServer:
         is_caputre_success = self.wait_image(time_threshold=10)
 
         if is_caputre_success:
-            resp.success = True
             dice_color = detect_dice_color(self.img_dice)
-            resp.dice_color = dice_color
-            return resp
+            if dice_color:
+                resp.success = True
+                resp.dice_color = dice_color
+                return resp
 
         resp.success = False
         return resp

@@ -233,6 +233,7 @@ class CoordinateServer:
 
         This function calculates the world coordinates of the target block based on its color and label.
         If the tower transformation has not been initialized, the service will return a response with 'success' set to False.
+        If target_block_color is 'init', the service will return a response with jenga tower's coordinates and full tower map.
 
         Args:
             request: The service request object (GetWorldCoordRequest).
@@ -267,16 +268,22 @@ class CoordinateServer:
             if int(target_block_label) == 1:
                 coordinate1 = np.array([0.0375, 0.0375, 0])
                 coordinate2 = np.array([0.0375, -0.0375, 0])
-                push = False
             if int(target_block_label) == 2:
                 coordinate1 = np.array([-0.0375, 0.0375, 0])
                 coordinate2 = np.array([-0.0375, -0.0375, 0])
+                _, _, _, tower_map = func.get_coordinates(
+                    request.target_block,
+                    blocks_pcd_by_color,
+                    self.cam_to_mesh_transform_matrix,
+                )
                 push = False
 
         else:
             # Returns CENTER, TCP_TARGET coordinates and extract method(push).
-            coordinate1, coordinate2, push = func.get_coordinate(
-                request.target_block, blocks_pcd_by_color, self.cam_to_mesh_transform_matrix
+            coordinate1, coordinate2, push, tower_map = func.get_coordinates(
+                request.target_block,
+                blocks_pcd_by_color,
+                self.cam_to_mesh_transform_matrix,
             )
 
         # Failed to calculate coordinates
@@ -287,13 +294,21 @@ class CoordinateServer:
         # Transform coordinates to world coordinate system
         coordinate1, coordinate2 = func.transform_coordinates_to_world(coordinate1, coordinate2, self.transform_matrix_lst)
 
-        resp.center_x = coordinate1[0]
-        resp.center_y = coordinate1[1]
-        resp.center_z = coordinate1[2]
-        resp.target_x = coordinate2[0]
-        resp.target_y = coordinate2[1]
-        resp.target_z = coordinate2[2]
-        resp.push = push
+        if push:
+            method = "push"
+        else:
+            method = "pull"
+
+        tower_map = bridge.cv2_to_imgmsg(tower_map, encoding="passthrough")
+
+        resp.center_coordinate.x = coordinate1[0]
+        resp.center_coordinate.y = coordinate1[1]
+        resp.center_coordinate.z = coordinate1[2]
+        resp.tcp_target_coordinate.x = coordinate2[0]
+        resp.tcp_target_coordinate.y = coordinate2[1]
+        resp.tcp_target_coordinate.z = coordinate2[2]
+        resp.method = method
+        resp.tower_map = tower_map
 
         return resp
 
