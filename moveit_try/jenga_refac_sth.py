@@ -281,253 +281,214 @@ class MoveitScene:
 
 
 def initialize():
-    # scene
-    robot = moveit_commander.RobotCommander()
-    scene = MoveitScene(robot)
-    # move_group
-    move_group = moveit_commander.MoveGroupCommander("arm")
-    mg = ManipulatorCommander(move_group)
-    return scene, mg
-
-
-def main():
     moveit_commander.roscpp_initialize(sys.argv)
-    rospy.init_node("robot_commander_analysis", anonymous=True)
+    rospy.init_node("jenga_main", anonymous=True)
 
     robot = moveit_commander.RobotCommander()
     print(f"============ Root Link:  {robot.get_root_link():^20} ============")
     print(f"============ Move Groups:{str(robot.get_group_names()):^20} ============")
-    scene = moveit_commander.PlanningSceneInterface()
-    scene.remove_world_object()
+
+    # move_group
     move_group = moveit_commander.MoveGroupCommander("arm")
     gripper = GripperCommander(wait=False)
+    return robot, move_group, gripper
 
-    scene, arm = initialize()
+robot, move_group, gripper = initialize()
 
-    links = robot.get_link_names()
-    grasp_link = links[list(map(lambda x: x.find("grasp") > -1, links)).index(True)]
-    push_link = links[list(map(lambda x: x.find("push") > -1, links)).index(True)]
-    grasper = ManipulatorCommander(grasp_link, move_group)
-    pusher = ManipulatorCommander(push_link, move_group)
+scene = moveit_commander.PlanningSceneInterface()
+scene.remove_world_object()
 
-
-"""
-while True:
-    if c == "A"
-        fooo
-    elif c == "B":
-        barrrr
-
-=============
-
-def do_A():
-    pass
-
-def do_B():
-    pass
-
-cmd_dictionary = {
-    "A": do_A,
-    "B": do_B,
-}
-
-eval("A()")
+links = robot.get_link_names()
+grasp_link = links[list(map(lambda x: x.find("grasp") > -1, links)).index(True)]
+push_link = links[list(map(lambda x: x.find("push") > -1, links)).index(True)]
+grasper = ManipulatorCommander(grasp_link, move_group)
+pusher = ManipulatorCommander(push_link, move_group)
 
 while True:
-    cmd_diictionary[c]()
+    command = input("\ncommand:")
 
+    # Basic functions
+    if command == "init":
+        move_group.set_named_target("ready")
+        move_group.plan()
+        move_group.go(wait=True)
+        gripper.homing()
 
+    elif command == "quit":
+        break
 
-"""
+    elif command == "eef":
+        eef = input("full eef link name:")
+        move_group.set_end_effector_link(eef)
 
-    while True:
-        command = input("\ncommand:")
+    elif command == "plan":
+        ans = list(map(float, input("xyzrpy coordinate(space separated):").split()))
+        goal = moveit_commander.conversions.list_to_pose(ans)
+        plan = move_group.plan(goal)
 
-        # Basic functions
-        if command == "init":
-            move_group.set_named_target("ready")
-            move_group.plan()
-            gripper.homing()
+    elif command == "display":
+        display_trajectory(plan, robot)
 
-        elif command == "quit":
-            break
+    elif command == "execute":
+        move_group.execute(plan, wait=True)
 
-        elif command == "eef":
-            eef = input("full eef link name:")
-            move_group.set_end_effector_link(eef)
+    elif command == "cartesian":
+        ans = input("cartesian move:")
+        cartesian_move = [float(ans.split(" ")[i]) for i in range(3)]
+        move_group.compute_cartesian_path(cartesian_move)
 
-        elif command == "plan":
-            ans = list(map(float, input("xyzrpy coordinate(space separated):").split()))
-            goal = moveit_commander.conversions.list_to_pose(ans)
-            plan = move_group.plan(goal)
+    # gripper functions
+    elif command == "grasp":
+        width = float(input("grasp width:"))
+        speed = float(input("grasp speed:"))
+        force = float(input("grasp force:"))
+        print(
+            f"Trying grasping into {width} with tolerance {gripper.epsilon} by {speed} and {force}..."
+        )
+        print(gripper.grasp(width, speed, force))
 
-        elif command == "display":
-            display_trajectory(plan, robot)
+    elif command == "move":
+        width = float(input("move width:"))
+        speed = float(input("move speed:"))
+        print(f"Trying moving to {width} by {speed}...")
+        print(gripper.move(width, speed))
 
-        elif command == "execute":
-            move_group.execute(plan, wait=True)
+    elif command == "final_test":
+        # #camera position
+        grasper.rpy_goal([pi / 2, pi / 2, pi / 2], [-0.05, -0.5, 0.5])
+        rospy.sleep(5)
+        ############### take picture and callib ######################
+        rospy.wait_for_service("CaptureImage")
+        capture_image = rospy.ServiceProxy("CaptureImage", CaptureImage)
+        request_capture_image = CaptureImageRequest()
 
-        elif command == "cartesian":
-            ans = input("cartesian move:")
-            cartesian_move = [float(ans.split(" ")[i]) for i in range(3)]
-            move_group.compute_cartesian_path(cartesian_move)
+        response = capture_image(request_capture_image)
 
-        # gripper functions
-        elif command == "grasp":
-            width = float(input("grasp width:"))
-            speed = float(input("grasp speed:"))
-            force = float(input("grasp force:"))
-            print(
-                f"Trying grasping into {width} with tolerance {gripper.epsilon} by {speed} and {force}..."
-            )
-            print(gripper.grasp(width, speed, force))
+        if response.status == response.FAILED:
+            rospy.logwarn("Failed to Capture Image")
+        elif response.status == response.SUCCESS:
+            rospy.loginfo("Image Captured")
+        elif response.status == response.SKIPPED:
+            rospy.loginfo("Image Capture Skipped")
 
-        elif command == "move":
-            width = float(input("move width:"))
-            speed = float(input("move speed:"))
-            print(f"Trying moving to {width} by {speed}...")
-            print(gripper.move(width, speed))
+        # INIT 1
+        rospy.wait_for_service("GetWorldCoordinates")
 
-        elif command == "final_test":
-            # #camera position
-            grasper.rpy_goal([pi / 2, pi / 2, pi / 2], [-0.05, -0.5, 0.5])
-            rospy.sleep(5)
-            ############### take picture and callib ######################
-            rospy.wait_for_service("CaptureImage")
-            capture_image = rospy.ServiceProxy("CaptureImage", CaptureImage)
-            request_capture_image = CaptureImageRequest()
+        get_coord = rospy.ServiceProxy("GetWorldCoordinates", GetWorldCoord)
 
-            response = capture_image(request_capture_image)
+        request = GetWorldCoordRequest()
 
-            if response.status == response.FAILED:
-                rospy.logwarn("Failed to Capture Image")
-            elif response.status == response.SUCCESS:
-                rospy.loginfo("Image Captured")
-            elif response.status == response.SKIPPED:
-                rospy.loginfo("Image Capture Skipped")
+        request.target_block = "init 1"
 
-            # INIT 1
+        response = get_coord(request.target_block)
+
+        jenga_coordinate1_x = dcp(dcp(response.center_x))
+        jenga_coordinate1_y = dcp(dcp(response.center_y))
+        jenga_coordinate1_z = dcp(dcp(response.center_z))
+        jenga_coordinate2_x = dcp(response.target_x)
+        jenga_coordinate2_y = dcp(response.target_y)
+        jenga_coordinate2_z = dcp(response.target_z)
+        # print(dcp(response.center_y))
+        # print(dcp(response.center_z))
+        # print(dcp(response.target_x))
+        # print(dcp(response.target_y))
+        # print(dcp(response.target_z))
+
+        # INIT 2
+        rospy.wait_for_service("GetWorldCoordinates")
+
+        get_coord = rospy.ServiceProxy("GetWorldCoordinates", GetWorldCoord)
+
+        request = GetWorldCoordRequest()
+
+        request.target_block = "init 2"
+
+        response = get_coord(request.target_block)
+
+        jenga_coordinate3_x = dcp(response.center_x)
+        jenga_coordinate3_y = dcp(response.center_y)
+        jenga_coordinate3_z = dcp(response.center_z)
+        jenga_coordinate4_x = dcp(response.target_x)
+        jenga_coordinate4_y = dcp(response.target_y)
+        jenga_coordinate4_z = dcp(response.target_z)
+
+        # rospy.loginfo(jenga_coordinate1_x)
+        # rospy.loginfo(jenga_coordinate1_y)
+        # rospy.loginfo(jenga_coordinate1_z)
+
+        # marker로 좌표 check
+        # marker_pub = rospy.Publisher('/visualization_marker', Marker, queue_size=10)
+        # marker = Marker()
+
+        ###############give me 4 poinst to make jenga################
+        points = [
+            [jenga_coordinate1_x, jenga_coordinate1_y, jenga_coordinate1_z],
+            [jenga_coordinate2_x, jenga_coordinate2_y, jenga_coordinate2_z],
+            [jenga_coordinate3_x, jenga_coordinate3_y, jenga_coordinate3_z],
+            [jenga_coordinate4_x, jenga_coordinate4_y, jenga_coordinate4_z],
+        ]
+        # give me succeeding points
+
+        scene.add_jenga_box(points)
+
+        while True:
+            command = input("\njenga to extract: ")  # ex. "green 5"
+            if command == "q":
+                break
+
+            ################### get two points and method #################
+            # color = 'green'
+            # num = 5
             rospy.wait_for_service("GetWorldCoordinates")
 
             get_coord = rospy.ServiceProxy("GetWorldCoordinates", GetWorldCoord)
 
             request = GetWorldCoordRequest()
 
-            request.target_block = "init 1"
+            request.target_block = command
+            print(request)
+            print("heejslfdjsdlkfjlk")
+            response = get_coord(request)
 
-            response = get_coord(request.target_block)
+            print(response.success)
+            print(dcp(response.center_x))
+            print(dcp(response.center_y))
+            print(dcp(response.center_z))
+            print(dcp(response.target_x))
+            print(dcp(response.target_y))
+            print(dcp(response.target_z))
+            print(response.push)
 
-            jenga_coordinate1_x = dcp(dcp(response.center_x))
-            jenga_coordinate1_y = dcp(dcp(response.center_y))
-            jenga_coordinate1_z = dcp(dcp(response.center_z))
-            jenga_coordinate2_x = dcp(response.target_x)
-            jenga_coordinate2_y = dcp(response.target_y)
-            jenga_coordinate2_z = dcp(response.target_z)
-            # print(dcp(response.center_y))
-            # print(dcp(response.center_z))
-            # print(dcp(response.target_x))
-            # print(dcp(response.target_y))
-            # print(dcp(response.target_z))
+            # dcp(response.success)
+            # (dcp(response.center_x))
+            # (dcp(response.center_y))
+            # (dcp(response.center_z))
+            # (dcp(response.target_x))
+            # (dcp(response.target_y))
+            # (dcp(response.target_z))
+            # dcp(response.push)
 
-            # INIT 2
-            rospy.wait_for_service("GetWorldCoordinates")
-
-            get_coord = rospy.ServiceProxy("GetWorldCoordinates", GetWorldCoord)
-
-            request = GetWorldCoordRequest()
-
-            request.target_block = "init 2"
-
-            response = get_coord(request.target_block)
-
-            jenga_coordinate3_x = dcp(response.center_x)
-            jenga_coordinate3_y = dcp(response.center_y)
-            jenga_coordinate3_z = dcp(response.center_z)
-            jenga_coordinate4_x = dcp(response.target_x)
-            jenga_coordinate4_y = dcp(response.target_y)
-            jenga_coordinate4_z = dcp(response.target_z)
-
-            # rospy.loginfo(jenga_coordinate1_x)
-            # rospy.loginfo(jenga_coordinate1_y)
-            # rospy.loginfo(jenga_coordinate1_z)
-
-            # marker로 좌표 check
-            # marker_pub = rospy.Publisher('/visualization_marker', Marker, queue_size=10)
-            # marker = Marker()
-
-            ###############give me 4 poinst to make jenga################
-            points = [
-                [jenga_coordinate1_x, jenga_coordinate1_y, jenga_coordinate1_z],
-                [jenga_coordinate2_x, jenga_coordinate2_y, jenga_coordinate2_z],
-                [jenga_coordinate3_x, jenga_coordinate3_y, jenga_coordinate3_z],
-                [jenga_coordinate4_x, jenga_coordinate4_y, jenga_coordinate4_z],
+            # vision result
+            target_point = [
+                dcp(response.center_x),
+                dcp(response.center_y),
+                dcp(response.center_z),
             ]
-            # give me succeeding points
+            temp_point = [
+                dcp(response.target_x),
+                dcp(response.target_y),
+                dcp(response.target_z),
+            ]
+            method = response.push  # true-push fasle-pull
+            ###############################################################
+            if method:
+                pusher.jenga_extract(target_point, temp_point, method)
+            else:
+                grasper.jenga_extract(target_point, temp_point, method)
 
-            scene.add_jenga_box(points)
+        rospy.sleep(1)
+        # move.move_client(0.08)
+        grasper.go_to_default()
 
-            while True:
-                command = input("\njenga to extract: ")  # ex. "green 5"
-                if command == "q":
-                    break
-
-                ################### get two points and method #################
-                # color = 'green'
-                # num = 5
-                rospy.wait_for_service("GetWorldCoordinates")
-
-                get_coord = rospy.ServiceProxy("GetWorldCoordinates", GetWorldCoord)
-
-                request = GetWorldCoordRequest()
-
-                request.target_block = command
-                print(request)
-                print("heejslfdjsdlkfjlk")
-                response = get_coord(request)
-
-                print(response.success)
-                print(dcp(response.center_x))
-                print(dcp(response.center_y))
-                print(dcp(response.center_z))
-                print(dcp(response.target_x))
-                print(dcp(response.target_y))
-                print(dcp(response.target_z))
-                print(response.push)
-
-                # dcp(response.success)
-                # (dcp(response.center_x))
-                # (dcp(response.center_y))
-                # (dcp(response.center_z))
-                # (dcp(response.target_x))
-                # (dcp(response.target_y))
-                # (dcp(response.target_z))
-                # dcp(response.push)
-
-                # vision result
-                target_point = [
-                    dcp(response.center_x),
-                    dcp(response.center_y),
-                    dcp(response.center_z),
-                ]
-                temp_point = [
-                    dcp(response.target_x),
-                    dcp(response.target_y),
-                    dcp(response.target_z),
-                ]
-                method = response.push  # true-push fasle-pull
-                ###############################################################
-                if method:
-                    pusher.jenga_extract(target_point, temp_point, method)
-                else:
-                    grasper.jenga_extract(target_point, temp_point, method)
-
-            rospy.sleep(1)
-            # move.move_client(0.08)
-            grasper.go_to_default()
-
-        else:
-            print("command error")
-
-
-if __name__ == "__main__":
-    main()
+    else:
+        print("command error")
