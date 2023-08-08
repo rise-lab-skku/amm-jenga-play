@@ -7,9 +7,12 @@ import geometry_msgs.msg
 import time
 import spatialmath as sm
 
+from gripper_commander import GripperCommander
+
 from math import pi, tau, dist, fabs, cos, atan, sin, sqrt
 from copy import deepcopy as dcp
 from block_recog_pkg.srv import GetWorldCoord, GetWorldCoordRequest, GetWorldCoordResponse, CaptureImage, CaptureImageRequest, CaptureImageResponse
+
 
 def all_close(goal, actual, tolerance):
     """
@@ -45,14 +48,8 @@ def display_trajectory(plan, robot):
     disp_traj.trajectory_start = robot.get_current_state()
     disp_traj.trajectory.append(plan)
     
-    display_trajectory_publisher = rospy.Publisher(
-        "/move_group/display_planned_path",
-        moveit_msgs.msg.DisplayTrajectory,
-        queue_size=20,
-    )
-    display_trajectory_publisher.publish(display_trajectory)
-
-
+    disp_traj_pub = rospy.Publisher("/move_group/display_planned_path", moveit_msgs.msg.DisplayTrajectory)
+    disp_traj_pub.publish(disp_traj)
 
 
 class ManipulatorCommander():
@@ -63,7 +60,7 @@ class ManipulatorCommander():
 
 
     def plan_and_execute(self, pose_goal):
-        is_success, traj, planning_time, error_code = move_group.plan(joints=pose_goal)
+        is_success, traj, planning_time, error_code = move_group.plan(pose_goal)
         _msg = "success" if is_success else "failed"
         rospy.loginfo(f"Planning is [ {_msg} ] (error code : {error_code.val}, planning time : {planning_time:.2f}s)")
         self.display_trajectory(traj)
@@ -84,11 +81,7 @@ class ManipulatorCommander():
         wpose.position.z += cartesian_move[2]
         waypoints.append(dcp(wpose))
 
-        # We want the Cartesian path to be interpolated at a resolution of 1 cm
-        # which is why we will specify 0.01 as the eef_step in Cartesian
-        # translation.  We will disable the jump threshold by setting it to 0.0,
-        # ignoring the check for infeasible jumps in joint space, which is sufficient
-        # for this tutorial.
+        
         plan, fraction = move_group.compute_cartesian_path(
             waypoints, 0.01, 0.0, avoid_collisions  # waypoints to follow  # eef_step
         )  # jump_threshold
@@ -110,13 +103,10 @@ class ManipulatorCommander():
         move_group.clear_pose_targets()
         return is_success
 
-    def rpy_goal(self, rpy, xyz):
-        end_effetor = move_group.get_end_effector_link()
-        print("end_effector: ",end_effetor)
+    def rpy_goal(self, pose):
         
-        move_group.set_position_target(xyz, end_effetor)
         pose_goal = [xyz[0], xyz[1], xyz[2], rpy[0], rpy[1], rpy[2]]
-        pose_goal = move_group.set_pose_target(pose_goal, end_effetor)
+        goal = move_group.set_pose_target(pose, self.eef)
         
         #move_group.go(plan, wait=True)
         self.plan_traj_exec(pose_goal)
@@ -244,61 +234,6 @@ class MoveitScene():
         self.eef_link = eef_link
         self.group_names = group_names
 
-    def add_camera_box(self, timeout=4):
-        box_name = self.box_name
-        scene = self.scene
-
-        # Adding Objects to the Planning Scene
-        # Camera attched to end effector. We have to avoid collision with the camera
-        box_pose = geometry_msgs.msg.PoseStamped()
-        box_pose.header.frame_id = "panda_hand" # attaching to the end effector
-        box_pose.pose.orientation.w = 1.0
-        box_pose.pose.position.x = 0.08  # above the panda_hand frame
-        box_pose.pose.position.y = 0.0  # above the panda_hand frame
-        box_pose.pose.position.z = 0.02  # above the panda_hand frame
-        box_name = "camera_box"
-        scene.add_box(box_name, box_pose, size=(0.04, 0.1, 0.1))
-        self.box_name = box_name
-        return self.wait_for_state_update(box_is_known=True, timeout=timeout)
-
-    def add_finger_box(self, timeout=4):
-        box_name = self.box_name
-        scene = self.scene
-        # First, we will create a box in the planning scene between the fingers:
-        # long finger tips attched to gripper finger.. We have to avoid collision with the finger tips
-        box_pose = geometry_msgs.msg.PoseStamped()
-        box_pose.header.frame_id = "panda_hand" # attaching to the end effector
-        box_pose.pose.orientation.w = 1.0
-        box_pose.pose.position.z = 0.16  # above the panda_hand frame
-        box_name = "finger_box"
-        scene.add_box(box_name, box_pose, size=(0.02, 0.09, 0.09))
-        self.box_name = box_name
-        return self.wait_for_state_update(box_is_known=True, timeout=timeout)
-
-    def add_finger_boxes(self, timeout=4):
-        box1_name = self.box_name
-        box2_name = self.box_name
-        scene = self.scene
-        # First, we will create a box in the planning scene between the fingers:
-        # long finger tips attched to gripper finger.. We have to avoid collision with the finger tips
-        box1_pose = geometry_msgs.msg.PoseStamped()
-        box1_pose.header.frame_id = "panda_hand" # attaching to the end effector
-        box1_pose.pose.orientation.w = 1.0
-        box1_pose.pose.position.z = 0.16  # above the panda_hand frame
-        box1_pose.pose.position.y = 0.05
-        box2_pose = geometry_msgs.msg.PoseStamped()
-        box2_pose.header.frame_id = "panda_hand" # attaching to the end effector
-        box2_pose.pose.orientation.w = 1.0
-        box2_pose.pose.position.z = 0.16  # above the panda_hand frame
-        box2_pose.pose.position.y = -0.05
-        box1_name = "finger_box1"
-        box2_name = "finger_box2"
-        scene.add_box(box1_name, box1_pose, size=(0.01, 0.01, 0.09))
-        scene.add_box(box2_name, box2_pose, size=(0.01, 0.01, 0.09))
-        self.box_name = box1_name
-        self.box_name = box2_name
-        return self.wait_for_state_update(box_is_known=True, timeout=timeout)
-
     def add_jenga_box(self, points = None, timeout=4):
         box_name = self.box_name
         scene = self.scene
@@ -382,33 +317,26 @@ def main():
     print(f"============ Move Groups:{str(robot.get_group_names()):^20} ============")
     scene = moveit_commander.PlanningSceneInterface()
     scene.remove_world_object()
-    global move_group
     move_group = moveit_commander.MoveGroupCommander("arm")
-    gripper = GripperCommander()
+    # gripper = GripperCommander()
+
+    links = robot.get_link_names()
+    grasp_link = links[list(map(lambda x: x.find('grasp') > -1, links)).index(True)]
+    push_link = links[list(map(lambda x: x.find('push') > -1, links)).index(True)]
+    grasper = ManipulatorCommander(grasp_link)
+    pusher = ManipulatorCommander(push_link)
+
+
 
     try:
-        grasper = MoveitPython('panda_hand_grasp-tcp')
-        # pusher = MoveitPython(group_name = "arm")
-        scene = MoveitScene()
-        time.sleep(1)
-        os.system("python3 "+os.path.dirname(__file__)+"/jenga_obstacle_environment.py")
-        rospy.sleep(1)
         
-        # print("============ Adding Jenga to the scene ============")
-        #scene.add_jenga_box()
-
         while True:
             command=input("\ncommand:")
 
             #Basic functions
             if command=="init":
-                grasper.rpy_goal([pi/2, pi/2, pi/2],[0, -0.5, 0.5])
-                time.sleep(1)
-                move_client()
-                move_client(0.08)
-            
-            elif command=="default":
-                grasper.go_to_default()
+                move_group.set_named_target('ready')
+                gripper.homing()
             
             elif command == "quit":
                 break
@@ -442,19 +370,20 @@ def main():
             #gripper functions
             elif command=="grasp":
                 width = float(input("grasp width:"))
-                print("target gripping width is", width, "grip success status: ",grasp_client(width=width))
+                speed = float(input("grasp speed:"))
+                force = float(input("grasp force:"))
+                print(f"Trying grasping into {width} with tolerance {gripper.epsilon} by {speed} and {force}...")
+                print(gripper.grasp(width, speed, force))
 
             elif command=="move":
                 width = float(input("move width:"))
-                print("target gripper width is", move_client(width=width))
+                speed = float(input("move speed:"))
+                print(f"Trying moving to {width} by {speed}")
+                print(gripper.move(width))
 
-
-            #jenga playing functions
-            elif command=="back":
-                grasper.go_to_back_position()
-
-            elif command=="right":
-                grasper.go_to_right_position()
+            elif command=="homing":
+                print("Trying homing...")
+                print(gripper.homing())
 
             elif command=="final_test":
                 #move.move_client(0.08)
