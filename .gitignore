@@ -1,3 +1,4 @@
-*.pyc
-__pycache__/
+__pycache__/fr3.cpython-38.pyc
 .vscode/
+moveit_try/__pycache__
+block_recog_pkg/scripts/__pycache__

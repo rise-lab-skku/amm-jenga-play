@@ -41,17 +41,16 @@
   <group ns="move_group/planning_pipelines">
 
     <!-- OMPL -->
-    <include file="$(dirname)/ompl_planning_pipeline.launch"/>
+    <include ns="ompl" file="$(dirname)/ompl_planning_pipeline.launch"/>
   </group>
 
   <!-- Trajectory Execution Functionality -->
-  <include ns="move_group" file="$(dirname)/trajectory_execution.launch.xml" pass_all_args="true" if="$(arg allow_trajectory_execution)">
+  <include ns="move_group" file="$(dirname)/trajectory_execution.launch" pass_all_args="true" if="$(arg allow_trajectory_execution)">
     <arg name="moveit_manage_controllers" value="true" />
   </include>
 
   <!-- Sensors Functionality -->
-  <include ns="move_group" file="$(dirname)/sensor_manager.launch.xml" if="$(arg allow_trajectory_execution)">
-    <arg name="moveit_sensor_manager" value="panda" />
+  <include ns="move_group" file="$(dirname)/sensor_manager.launch" if="$(arg allow_trajectory_execution)">
   </include>
 
   <!-- Start the actual move_group node/action server -->

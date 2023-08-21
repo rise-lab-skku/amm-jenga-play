@@ -30,8 +30,6 @@
     <arg name="info" value="true" />
   </include>
 
-  <!-- Run Rviz and load the default config to see the state of the move_group node -->
-  <include file="$(dirname)/moveit_rviz.launch"/>
-
+    <node name="$(anon rviz)" launch-prefix="" pkg="rviz" type="rviz" respawn="false" args="-d $(find fr3_moveit_config)/config/rviz.yaml" output="screen"/>
 
 </launch>
