@@ -26,7 +26,7 @@ def img_masking(img_color: np.ndarray, color: str) -> Tuple[List[np.ndarray], Li
     # Convert to HSV Image
     img_hsv = cv2.cvtColor(img_color, cv2.COLOR_BGR2HSV)
 
-    # Each Color's range.
+    # Define the lower and upper bounds of each color
     # RED
     lower_red1 = np.array([0, 100, 50])
     upper_red1 = np.array([15, 255, 255])
@@ -50,7 +50,7 @@ def img_masking(img_color: np.ndarray, color: str) -> Tuple[List[np.ndarray], Li
     lower_violet = np.array([130 - 20, 60, 60])
     upper_violet = np.array([130 + 30, 120, 130])
 
-    # Get Mask for each color.
+    # Make Mask
     if color == "pink" or color == "red":
         if color == "pink":
             lower_color1 = lower_pink1
@@ -88,6 +88,7 @@ def img_masking(img_color: np.ndarray, color: str) -> Tuple[List[np.ndarray], Li
     erosion_image_color = cv2.erode(img_mask_color, kernel, iterations=2)  # make erosion image
     img_mask_color = cv2.dilate(erosion_image_color, kernel, iterations=2)  # make dilation image
 
+    # Thresholding
     _, src_bin = cv2.threshold(img_mask_color, 0, 255, cv2.THRESH_OTSU)
 
     # Seperate Masks using Connnected Pixels
@@ -127,6 +128,8 @@ def get_tower_mask(
     """
     tower_mask = 0
     tower_color = 0
+    
+    # Combine masks and color images for each color
     for mask, color in zip(blocks_mask_by_color, blocks_rgb_by_color):
         for block_m in mask:
             tower_mask += block_m
@@ -193,6 +196,7 @@ def combine_pcd(all_pcd: List[o3d.geometry.PointCloud]) -> o3d.geometry.PointClo
         # ... (add points to pcd1 and pcd2)
         combined_pcd = combine_pcd([pcd1, pcd2])
     """
+    # Combine all point clouds into one
     pcd_combined = o3d.geometry.PointCloud()
     for point_id in range(len(all_pcd)):
         pcd_combined += all_pcd[point_id]
@@ -269,10 +273,12 @@ def prepare_icp_move(source: o3d.geometry.PointCloud, target: o3d.geometry.Point
     source_tmp = copy.deepcopy(source)
     target_tmp = copy.deepcopy(target)
 
-    initial_transform = np.asarray([[0, 0, -1, 0], [-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]])
+    initial_transform = np.asarray([[0, 0, -1, 0], [-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]])  # z-axis 180 degree rotation
 
+    # Transform the source PointCloud to align with the target
     source_tmp.transform(initial_transform)
-    # move the source pcd to do icp
+    
+    # Get the translation vector to align the source with the target
     move = np.array(target_tmp.get_oriented_bounding_box().get_center() - source_tmp.get_oriented_bounding_box().get_center())
 
     return move
@@ -306,7 +312,7 @@ def do_ICP(
         o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=2000),
     )
 
-    transform_matrix = copy.deepcopy(reg_p2p.transformation)
+    transform_matrix = copy.deepcopy(reg_p2p.transformation)  # Get the final transformation matrix
     # transform_matrix[0,3] /= 1000
     # transform_matrix[1,3] /= 1000
     # transform_matrix[2,3] /= 1000
@@ -362,6 +368,7 @@ def transform_blocks(pcd: o3d.geometry.PointCloud, transform_matrix: np.ndarray)
     """
     pcd_transformed = copy.deepcopy(pcd)
 
+    # Transform PointCloud
     pcd_transformed.transform(transform_matrix)
 
     return pcd_transformed
@@ -426,6 +433,7 @@ def get_coordinates(
             floors = int(z_mean // 0.015)
             true_z = floors * 0.015 + 0.0075
 
+            # Determine whether to push or pull the block and calculate the target coordinates
             if box_extent[1] > 0.070:
                 # print("PULL DIRECTION : X")
                 push = False
@@ -532,7 +540,10 @@ def coordinate_transform(coordinate3D: np.ndarray, transform_matrix: np.ndarray)
     Returns:
         numpy.ndarray: The new transformed 3D coordinate as a numpy array [x', y', z'].
     """
+    # add 1 to the coordinate to make it homogeneous
     coordinate = np.append(coordinate3D, 1)
+    
+    # apply the transformation matrix and remove the homogeneous coordinate
     new_coordinate = np.inner(transform_matrix, coordinate)[:3]
 
     return new_coordinate
@@ -549,10 +560,10 @@ def transform_mat_from_trans_rot(trans: list, rot: list) -> np.ndarray:
     Returns:
         numpy.ndarray: The 4x4 transformation matrix.
     """
-    # rotation quaternion
+    # get rotation quaternion
     e1, e2, e3, e4 = rot
 
-    # to transform matrix
+    # create the transformation matrix
     trans_matrix = np.array(
         [
             [

@@ -4,9 +4,10 @@ import rospy
 from block_recog_pkg.srv import (
     GetWorldCoord,
     GetWorldCoordResponse,
-    # GetWorldCoordRequest,
+    GetWorldCoordRequest,
     CaptureImage,
     CaptureImageResponse,
+    CaptureImageRequest,
 )
 import tf
 from sensor_msgs.msg import Image
@@ -59,7 +60,7 @@ class CoordinateServer:
         # Define Service that returns target block's coordinates
         block_coordinate_service = rospy.Service("GetWorldCoordinates", GetWorldCoord, self.GetWorldCoordinates)
 
-    def find_initial_tower_transform(self):
+    def find_initial_tower_transform(self) -> None:
         """
         Finds the initial transformation matrices for the tower.
 
@@ -131,7 +132,7 @@ class CoordinateServer:
 
         self.tower_transform_initialized = True  # Done calculating Transform Matrices
 
-    def capture_flag(self, request):
+    def capture_flag(self, request: CaptureImageRequest) -> CaptureImageResponse:
         """
         Captures an image and initializes the tower transformation.
 
@@ -227,9 +228,9 @@ class CoordinateServer:
         rospy.logwarn("...Failed...")
         return False
 
-    def GetWorldCoordinates(self, request):
+    def GetWorldCoordinates(self, request: GetWorldCoordRequest) -> GetWorldCoordResponse:
         """
-        Service function to get world coordinates of a target block.
+        Service callback function to get world coordinates of a target block.
 
         This function calculates the world coordinates of the target block based on its color and label.
         If the tower transformation has not been initialized, the service will return a response with 'success' set to False.
@@ -294,13 +295,16 @@ class CoordinateServer:
         # Transform coordinates to world coordinate system
         coordinate1, coordinate2 = func.transform_coordinates_to_world(coordinate1, coordinate2, self.transform_matrix_lst)
 
+        # Set method
         if push:
             method = "push"
         else:
             method = "pull"
 
+        # Convert tower map to ROS message
         tower_map = bridge.cv2_to_imgmsg(tower_map, encoding="passthrough")
 
+        # Set response
         resp.center_coordinate.x = coordinate1[0]
         resp.center_coordinate.y = coordinate1[1]
         resp.center_coordinate.z = coordinate1[2]

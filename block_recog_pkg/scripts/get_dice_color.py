@@ -6,7 +6,7 @@ from cv_bridge import CvBridge
 import cv2
 import numpy as np
 import time
-from block_recog_pkg.srv import GetDiceColor, GetDiceColorResponse
+from block_recog_pkg.srv import GetDiceColor, GetDiceColorResponse, GetDiceColorRequest
 
 bridge = CvBridge()
 
@@ -21,10 +21,12 @@ def detect_dice_color(img_dice: np.ndarray) -> str:
     Returns:
         str: The name of the color ('green', 'pink', 'yellow', 'blue', 'violet', or 'red').
     """
+    # Convert the RGB image to HSV
     img_hsv = cv2.cvtColor(img_dice, cv2.COLOR_BGR2HSV)
 
     colors = ["green", "pink", "yellow", "blue", "violet", "red"]
 
+    # Define the lower and upper bounds of each color
     # RED
     lower_red1 = np.array([0, 130, 50])
     upper_red1 = np.array([15, 255, 255])
@@ -51,6 +53,7 @@ def detect_dice_color(img_dice: np.ndarray) -> str:
     domintant_color_area = 1
     dominant_color = None
 
+    # Find the dominant color
     for color in colors:
         if color == "pink" or color == "red":
             if color == "pink":
@@ -100,6 +103,21 @@ def detect_dice_color(img_dice: np.ndarray) -> str:
 
 
 class DiceServer:
+    """
+    A class that provides a service to get the color of the dice.
+
+    Attributes:
+        img_dice (numpy.ndarray): The RGB image of the dice.
+        ready_to_capture_image (bool): Whether the image of the dice is ready to be captured.
+
+    Subscriber:
+        /rgb/image_raw (sensor_msgs/Image): The RGB image of the dice.
+
+    Service:
+        /GetDiceColor (block_recog_pkg/GetDiceColor): The service to get the color of the dice.
+
+    """
+
     def __init__(self):
         rospy.logwarn("Get Color from Dice")
 
@@ -108,7 +126,16 @@ class DiceServer:
         rospy.Subscriber("/rgb/image_raw", Image, self.image_callback)
         dice_service = rospy.Service("GetDiceColor", GetDiceColor, self.dice_color_response)
 
-    def image_callback(self, msg):
+    def image_callback(self, msg) -> None:
+        """
+        Callback function for the subscriber of the RGB image of the dice.
+
+        Args:
+            msg (sensor_msgs/Image): The RGB image of the dice.
+
+        Returns:
+            None
+        """
         try:
             if self.ready_to_capture_image:
                 self.img_dice = bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
@@ -118,6 +145,15 @@ class DiceServer:
             print(e)
 
     def wait_image(self, time_threshold: float = 10.0) -> bool:
+        """
+        Wait until the RGB image of the dice is captured.
+
+        Args:
+            time_threshold (float): The time limit to wait for the image of the dice.
+
+        Returns:
+            bool: Whether the image of the dice is captured.
+        """
         rospy.logwarn(f"Wait .... (limit: {time_threshold} secs)")
         start_time = time.time()
 
@@ -130,7 +166,16 @@ class DiceServer:
         rospy.logwarn("...Failed...")
         return False
 
-    def dice_color_response(self, request):
+    def dice_color_response(self, request: GetDiceColorRequest) -> GetDiceColorResponse:
+        """
+        Service callback function to get the color of the dice.
+
+        Args:
+            request (block_recog_pkg/GetDiceColorRequest): The request to get the color of the dice.
+
+        Returns:
+            block_recog_pkg/GetDiceColorResponse: The response to get the color of the dice.
+        """
         resp = GetDiceColorResponse()
 
         self.ready_to_capture_image = True
