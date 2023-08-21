@@ -3,23 +3,31 @@
     <xacro:include filename="$(find custom_description)/robots/utils.xacro" />
     <xacro:arg name="arm_id" default="panda" />
 
-    <group name="$(arg arm_id)_arm">
+    <!-- <group name="$(arg arm_id)_arm">
         <chain base_link="$(arg arm_id)_link0" tip_link="$(arg arm_id)_link8" />
     </group>
     <group name="$(arg arm_id)_hand">
         <link name="$(arg arm_id)_hand"/>
         <link name="$(arg arm_id)_leftfinger"/>
         <link name="$(arg arm_id)_rightfinger"/>
-    </group>
-    <group name="$(arg arm_id)_manipulator">
-        <chain base_link="$(arg arm_id)_link0" tip_link="$(arg arm_id)_hand_push-tcp" />
-    </group>
-    <!-- <group name="$(arg arm_id)_body">
-        <group name="$(arg arm_id)_arm" />
-        <group name="$(arg arm_id)_hand" />
     </group> -->
 
-    <group_state name="ready" group="$(arg arm_id)_manipulator">
+    <group name="arm">
+        <chain base_link="$(arg arm_id)_link0" tip_link="$(arg arm_id)_link8" />
+    </group>
+
+    <group name="gripper">
+        <link name="$(arg arm_id)_hand"/>
+        <link name="$(arg arm_id)_leftfinger"/>
+        <link name="$(arg arm_id)_rightfinger"/>
+        <link name="$(arg arm_id)_hand_push-tcp"/>
+        <link name="$(arg arm_id)_hand_grasp-tcp"/>
+
+        <joint name="$(arg arm_id)_finger_joint1"/>
+        <joint name="$(arg arm_id)_finger_joint2"/>
+    </group>
+
+    <group_state name="ready" group="arm">
         <joint name="$(arg arm_id)_joint1" value="0" />
         <joint name="$(arg arm_id)_joint2" value="${-pi/4}" />
         <joint name="$(arg arm_id)_joint3" value="0" />
@@ -45,7 +53,6 @@
     <disable_default_collisions link="$(arg arm_id)_base"/>
     <enable_collisions link1="$(arg arm_id)_base" link2="$(arg arm_id)_hand_sc" />
 
-    <!-- <end_effector name="$(arg arm_id)_gripper" parent_link="$(arg arm_id)_tcp" group="$(arg arm_id)_hand" parent_group="$(arg arm_id)_manipulator"/> -->
-    <end_effector name="$(arg arm_id)_tcp2" parent_link="$(arg arm_id)_hand_push-tcp" group="$(arg arm_id)_hand" parent_group="$(arg arm_id)_manipulator"/>
-    <end_effector name="$(arg arm_id)_hand" parent_link="$(arg arm_id)_link8" group="$(arg arm_id)_hand" parent_group="$(arg arm_id)_arm" />
+    <!-- <end_effector name="$(arg arm_id)_pusher" parent_link="$(arg arm_id)_hand_push-tcp" group="gripper" />
+    <end_effector name="$(arg arm_id)_grasper" parent_link="$(arg arm_id)_hand_grasp-tcp" group="gripper" /> -->
 </robot>
