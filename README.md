@@ -223,7 +223,7 @@ Please describe here about what has been done and what to do.
 >   - abcde
 >- **신현수**  
 >   - abcde
->   - abcde
+>   - dev-recog Branch
 
 ------
 ## Block Recognition

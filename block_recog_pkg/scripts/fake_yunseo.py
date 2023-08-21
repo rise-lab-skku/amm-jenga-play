@@ -1,13 +1,23 @@
 #!/usr/bin/env python
 
 import rospy
-from block_recog_pkg.srv import GetWorldCoord, GetWorldCoordRequest, GetWorldCoordResponse, CaptureImage, CaptureImageRequest, CaptureImageResponse
+from block_recog_pkg.srv import (
+    GetWorldCoord,
+    GetWorldCoordRequest,
+    # GetWorldCoordResponse,
+    CaptureImage,
+    CaptureImageRequest,
+    # CaptureImageResponse,
+    GetDiceColor,
+    GetDiceColorRequest,
+    # GetDiceColorResponse
+)
 
 rospy.init_node("service_client")
 
-rospy.wait_for_service('CaptureImage')
+rospy.wait_for_service("CaptureImage")
 
-capture_image = rospy.ServiceProxy('CaptureImage', CaptureImage)
+capture_image = rospy.ServiceProxy("CaptureImage", CaptureImage)
 
 request_capture_image = CaptureImageRequest()
 
@@ -20,9 +30,9 @@ elif response.status == response.SUCCESS:
 elif response.status == response.SKIPPED:
     rospy.loginfo("Image Capture Skipped")
 
-rospy.wait_for_service('GetWorldCoordinates')
+rospy.wait_for_service("GetWorldCoordinates")
 
-get_coord = rospy.ServiceProxy('GetWorldCoordinates', GetWorldCoord)
+get_coord = rospy.ServiceProxy("GetWorldCoordinates", GetWorldCoord)
 
 request = GetWorldCoordRequest()
 
@@ -38,5 +48,15 @@ print(response.target_x)
 print(response.target_y)
 print(response.target_z)
 print(response.push)
+print(response.tower_map.data)
+
+get_dice_color = rospy.ServiceProxy("GetDiceColor", GetDiceColor)
+
+request_dice_color = GetDiceColorRequest()
+
+response_dice_color = get_dice_color(request_dice_color)
+
+if response_dice_color.success:
+    dice_color = response_dice_color.dice_color
 
 rospy.spin()
