@@ -1,7 +1,7 @@
 import rospy
 import moveit_commander
 
-
+import geometry_msgs.msg
 import control_pkg
 from moveit_msgs.msg import DisplayTrajectory as DT
 from math import pi, dist, cos
@@ -13,6 +13,9 @@ from block_recog_pkg.srv import (
     CaptureImageRequest,
 )
 
+
+JENGA_CAPTURE_POS=[-0.05, -0.5, 0.5,pi / 2, pi / 2, pi / 2]
+DICE_CAPTURE_POS=[]
 
 def all_close(goal, current, position_tolerance, orientation_tolerance):
     gl = moveit_commander.conversions.pose_to_list(goal)
@@ -40,29 +43,27 @@ def initialize():
     print(f"============ Root Link:  {robot.get_root_link():^20} ============")
     print(f"============ Move Groups:{str(robot.get_group_names()):^20} ============")
 
-    # move_group
     move_group = moveit_commander.MoveGroupCommander("arm")
     gripper = control_pkg.gripper.Commander(wait=False)
-    return robot, move_group, gripper
+    scene = control_pkg.scene.Commander()
+
+    links = robot.get_link_names()
+    grasp_link = links[list(map(lambda x: x.find("grasp") > -1, links)).index(True)]
+    push_link = links[list(map(lambda x: x.find("push") > -1, links)).index(True)]
+    grasper = control_pkg.manipulator.Commander(grasp_link, move_group)
+    pusher = control_pkg.manipulator.Commander(push_link, move_group)
+
+    return robot, move_group, gripper, scene, grasper, pusher
 
 
-robot, move_group, gripper = initialize()
+robot, move_group, gripper, scene, grasper, pusher = initialize()
 
-scene = moveit_commander.PlanningSceneInterface()
-scene.remove_world_object()
 
-links = robot.get_link_names()
-grasp_link = links[list(map(lambda x: x.find("grasp") > -1, links)).index(True)]
-push_link = links[list(map(lambda x: x.find("push") > -1, links)).index(True)]
-grasper = control_pkg.manipulator.Commander(grasp_link, move_group)
-pusher = control_pkg.manipulator.Commander(push_link, move_group)
 
 while True:
-    command = input("\ncommand:")
-
     # #camera position
-    grasper.rpy_goal([pi / 2, pi / 2, pi / 2], [-0.05, -0.5, 0.5])
-    rospy.sleep(5)
+    grasper.plan_and_execute()
+    rospy.sleep(1)
     ############### take picture and callib ######################
     rospy.wait_for_service("CaptureImage")
     capture_image = rospy.ServiceProxy("CaptureImage", CaptureImage)
@@ -88,17 +89,18 @@ while True:
 
     response = get_coord(request.target_block)
 
-    jenga_coordinate1_x = dcp(dcp(response.center_x))
-    jenga_coordinate1_y = dcp(dcp(response.center_y))
-    jenga_coordinate1_z = dcp(dcp(response.center_z))
-    jenga_coordinate2_x = dcp(response.target_x)
-    jenga_coordinate2_y = dcp(response.target_y)
-    jenga_coordinate2_z = dcp(response.target_z)
-    # print(dcp(response.center_y))
-    # print(dcp(response.center_z))
-    # print(dcp(response.target_x))
-    # print(dcp(response.target_y))
-    # print(dcp(response.target_z))
+    coord0=geometry_msgs.msg.Point()
+    coord1=geometry_msgs.msg.Point()
+    coord2=geometry_msgs.msg.Point()
+    coord3=geometry_msgs.msg.Point()
+
+    coord0.x = dcp(response.center_x)
+    coord0.y = dcp(response.center_y)
+    coord0.z = dcp(response.center_z)
+
+    coord1.x = dcp(response.center_x)
+    coord1.y = dcp(response.center_y)
+    coord1.z = dcp(response.center_z)
 
     # INIT 2
     rospy.wait_for_service("GetWorldCoordinates")
@@ -111,31 +113,23 @@ while True:
 
     response = get_coord(request.target_block)
 
-    jenga_coordinate3_x = dcp(response.center_x)
-    jenga_coordinate3_y = dcp(response.center_y)
-    jenga_coordinate3_z = dcp(response.center_z)
-    jenga_coordinate4_x = dcp(response.target_x)
-    jenga_coordinate4_y = dcp(response.target_y)
-    jenga_coordinate4_z = dcp(response.target_z)
+    coord2.x = dcp(response.center_x)
+    coord2.y = dcp(response.center_y)
+    coord2.z = dcp(response.center_z)
 
-    # rospy.loginfo(jenga_coordinate1_x)
-    # rospy.loginfo(jenga_coordinate1_y)
-    # rospy.loginfo(jenga_coordinate1_z)
+    coord3.x = dcp(response.center_x)
+    coord3.y = dcp(response.center_y)
+    coord3.z = dcp(response.center_z)
 
     # marker로 좌표 check
     # marker_pub = rospy.Publisher('/visualization_marker', Marker, queue_size=10)
     # marker = Marker()
 
     ###############give me 4 poinst to make jenga################
-    points = [
-        [jenga_coordinate1_x, jenga_coordinate1_y, jenga_coordinate1_z],
-        [jenga_coordinate2_x, jenga_coordinate2_y, jenga_coordinate2_z],
-        [jenga_coordinate3_x, jenga_coordinate3_y, jenga_coordinate3_z],
-        [jenga_coordinate4_x, jenga_coordinate4_y, jenga_coordinate4_z],
-    ]
+    points = [coord0,coord1,coord2,coord3]
     # give me succeeding points
 
-    scene.add_jenga_box(points)
+    scene.add_jenga(points)
 
     while True:
         command = input("\njenga to extract: ")  # ex. "green 5"
@@ -164,16 +158,7 @@ while True:
         print(dcp(response.target_y))
         print(dcp(response.target_z))
         print(response.push)
-
-        # dcp(response.success)
-        # (dcp(response.center_x))
-        # (dcp(response.center_y))
-        # (dcp(response.center_z))
-        # (dcp(response.target_x))
-        # (dcp(response.target_y))
-        # (dcp(response.target_z))
-        # dcp(response.push)
-
+        
         # vision result
         target_point = [
             dcp(response.center_x),
@@ -185,13 +170,3 @@ while True:
             dcp(response.target_y),
             dcp(response.target_z),
         ]
-        method = response.push  # true-push fasle-pull
-        ###############################################################
-        if method:
-            pusher.jenga_extract(target_point, temp_point, method)
-        else:
-            grasper.jenga_extract(target_point, temp_point, method)
-
-    rospy.sleep(1)
-    # move.move_client(0.08)
-    grasper.go_to_default()

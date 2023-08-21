@@ -52,7 +52,7 @@ class Commander:
         move_group.clear_pose_targets()
         return is_success
 
-    def jenga_extract(self, target_point, temp_point, method):
+    def extract_jenga(self, target_point, temp_point, method):
         dx = temp_point.x - target_point.x
         dy = temp_point.y - target_point.y
         direction = atan(dy / dx) + pi / 2

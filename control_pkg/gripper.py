@@ -52,7 +52,7 @@ def test(gripper):
                 speed = float(input("grasp speed:"))
                 force = float(input("grasp force:"))
                 print(
-                    f"Trying grasping into ({width} \u00B1 {gripper.epsilon}) [m] by {speed} [m/s] until reaching {force} [N]..."
+                    f"Trying grasping into ({width} \u00B1 {gripper.epsilon.inner}) [m] by {speed} [m/s] until reaching {force} [N]..."
                 )
                 print(gripper.grasp(width, speed, force))
 
@@ -70,11 +70,11 @@ def test(gripper):
                 print("command error.")
     except KeyboardInterrupt:
         gripper.stop()
-        print("stopped.")
+        print("\n\nstopped.")
         test(gripper)
 
 
-if __name__ == "__test__":
+if __name__ == "__main__":
     import rospy
 
     rospy.init_node("gripper_commander_test", disable_signals=True)
