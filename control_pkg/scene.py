@@ -13,7 +13,7 @@ JENGA_Z = 0.31
 
 class Commander(PSI):
     def __init__(self):
-        super.__init__()
+        super().__init__()
         self.remove_world_object()
 
     def add_jenga(self, points, timeout=4):

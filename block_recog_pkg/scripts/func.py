@@ -4,11 +4,43 @@ import cv2
 import open3d as o3d
 import copy
 import rospy
+import os
 
-colors = ["green", "pink", "yellow", "blue", "violet", "red"]
+CONFIG = (
+    (((0, 130, 50), (15, 255, 255)), ((160, 130, 50), (179, 255, 255))),
+    (((0, 55, 80), (10, 130, 255)), ((150, 55, 80), (179, 130, 255))),
+    ((70 - 20, 50, 50), (70 + 15, 255, 255)),
+    ((30 - 10, 80, 80), (30 + 10, 255, 255)),
+    ((100 - 10, 100, 100), (100 + 9, 255, 255)),
+    ((130 - 20, 60, 60), (130 + 20, 255, 255)),
+)
 
 
-def img_masking(img_color: np.ndarray, color: str) -> Tuple[List[np.ndarray], List[np.ndarray]]:
+class Bound:
+    def __init__(self, config):
+        self.lower = config[0]
+        self.upper = config[1]
+
+
+class Crimson:
+    def __init__(self, config):
+        self.first = Bound(config[0])
+        self.second = Bound(config[1])
+
+
+colors = {
+    "green": Bound(CONFIG[2]),
+    "pink": Crimson(CONFIG[1]),
+    "yellow": Bound(CONFIG[3]),
+    "blue": Bound(CONFIG[4]),
+    "violet": Bound(CONFIG[5]),
+    "red": Crimson(CONFIG[0]),
+}
+
+
+def img_masking(
+    img_color: np.ndarray, color: str
+) -> Tuple[List[np.ndarray], List[np.ndarray]]:
     """
     Apply color-based image masking on the input color image.
 
@@ -28,65 +60,53 @@ def img_masking(img_color: np.ndarray, color: str) -> Tuple[List[np.ndarray], Li
 
     # Define the lower and upper bounds of each color
     # RED
-    lower_red1 = np.array([0, 100, 50])
+    lower_red1 = np.array([0, 130, 50])
     upper_red1 = np.array([15, 255, 255])
-    lower_red2 = np.array([160, 100, 50])
+    lower_red2 = np.array([160, 130, 50])
     upper_red2 = np.array([179, 255, 255])
+
     # PINK
-    lower_pink1 = np.array([0, 15, 200])
-    upper_pink1 = np.array([5, 90, 255])
-    lower_pink2 = np.array([150, 15, 200])
-    upper_pink2 = np.array([179, 80, 255])
+    lower_pink1 = np.array([0, 55, 80])
+    upper_pink1 = np.array([10, 130, 255])
+    lower_pink2 = np.array([150, 55, 80])
+    upper_pink2 = np.array([179, 130, 255])
+
     # GREEN
-    lower_green = np.array([70 - 20, 100, 100])
-    upper_green = np.array([70 + 15, 255, 255])
+    lower_green = (70 - 20, 50, 50)
+    upper_green = (70 + 15, 255, 255)
+
     # YELLOW
-    lower_yellow = np.array([30 - 10, 60, 120])
-    upper_yellow = np.array([30 + 10, 255, 255])
+    lower_yellow = (30 - 10, 80, 80)
+    upper_yellow = (30 + 10, 255, 255)
+
     # BLUE
-    lower_blue = np.array([100 - 10, 100, 100])
-    upper_blue = np.array([100 + 9, 255, 255])
+    lower_blue = (100 - 10, 100, 100)
+    upper_blue = (100 + 9, 255, 255)
+
     # VIOLET
-    lower_violet = np.array([130 - 20, 60, 60])
-    upper_violet = np.array([130 + 30, 120, 130])
+    lower_violet = (130 - 20, 60, 60)
+    upper_violet = (130 + 20, 255, 255)
 
     # Make Mask
-    if color == "pink" or color == "red":
-        if color == "pink":
-            lower_color1 = lower_pink1
-            lower_color2 = lower_pink2
-            upper_color1 = upper_pink1
-            upper_color2 = upper_pink2
-        if color == "red":
-            lower_color1 = lower_red1
-            lower_color2 = lower_red2
-            upper_color1 = upper_red1
-            upper_color2 = upper_red2
+    def mask(inst):
+        return cv2.inRange(img_hsv, inst.lower, inst.upper)
 
-        mask_color1 = cv2.inRange(img_hsv, lower_color1, upper_color1)
-        mask_color2 = cv2.inRange(img_hsv, lower_color2, upper_color2)
-        img_mask_color = mask_color1 + mask_color2
+    if color == "pink" or color == "red":
+        img_mask_color = mask(colors[color].first) + mask(colors[color].second)
 
     else:
-        if color == "blue":
-            lower_color = lower_blue
-            upper_color = upper_blue
-        if color == "green":
-            lower_color = lower_green
-            upper_color = upper_green
-        if color == "violet":
-            lower_color = lower_violet
-            upper_color = upper_violet
-        if color == "yellow":
-            lower_color = lower_yellow
-            upper_color = upper_yellow
-
-        img_mask_color = cv2.inRange(img_hsv, lower_color, upper_color)  # The pixels in the range are white, the rest are black
+        img_mask_color = mask(
+            colors[color]
+        )  # The pixels in the range are white, the rest are black
 
     # Erosion, Dilation for Denoising
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-    erosion_image_color = cv2.erode(img_mask_color, kernel, iterations=2)  # make erosion image
-    img_mask_color = cv2.dilate(erosion_image_color, kernel, iterations=2)  # make dilation image
+    erosion_image_color = cv2.erode(
+        img_mask_color, kernel, iterations=2
+    )  # make erosion image
+    img_mask_color = cv2.dilate(
+        erosion_image_color, kernel, iterations=2
+    )  # make dilation image
 
     # Thresholding
     _, src_bin = cv2.threshold(img_mask_color, 0, 255, cv2.THRESH_OTSU)
@@ -128,7 +148,7 @@ def get_tower_mask(
     """
     tower_mask = 0
     tower_color = 0
-    
+
     # Combine masks and color images for each color
     for mask, color in zip(blocks_mask_by_color, blocks_rgb_by_color):
         for block_m in mask:
@@ -140,7 +160,9 @@ def get_tower_mask(
     return tower_mask, tower_color
 
 
-def get_pointcloud_from_color_depth(color_image: np.ndarray, depth_image: np.ndarray, intrinsic) -> o3d.geometry.PointCloud:
+def get_pointcloud_from_color_depth(
+    color_image: np.ndarray, depth_image: np.ndarray, intrinsic
+) -> o3d.geometry.PointCloud:
     """
     Generate a 3D point cloud from color and depth images using Open3D library.
 
@@ -171,7 +193,9 @@ def get_pointcloud_from_color_depth(color_image: np.ndarray, depth_image: np.nda
 
     # Get RGBD Image from RGB Image and Depth Image
     # rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(color_image, depth_image, depth_scale=1, depth_trunc=3000.0, convert_rgb_to_intensity=False)
-    rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(color_image, depth_image, convert_rgb_to_intensity=False)
+    rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(
+        color_image, depth_image, convert_rgb_to_intensity=False
+    )
 
     # Get PointCloud from RGBD Image
     pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd_image, intrinsic)
@@ -234,7 +258,9 @@ def build_clean_tower_pcd_from_blocks(
     blocks_pcd_by_color = []
     all_pcd = []
     for color, block_mask in zip(colors, blocks_mask_by_color):
-        rospy.loginfo(f"Number of Blocks -> Color: {color}, Recognized Block Numbers: {len(block_mask)}")
+        rospy.loginfo(
+            f"Number of Blocks -> Color: {color}, Recognized Block Numbers: {len(block_mask)}"
+        )
         blocks_pcd = []
         for msk in block_mask:
             masked_block_rgb = cv2.bitwise_and(tower_color, tower_color, mask=msk)
@@ -259,7 +285,9 @@ def build_clean_tower_pcd_from_blocks(
     return pcd_combined, blocks_pcd_by_color
 
 
-def prepare_icp_move(source: o3d.geometry.PointCloud, target: o3d.geometry.PointCloud) -> np.ndarray:
+def prepare_icp_move(
+    source: o3d.geometry.PointCloud, target: o3d.geometry.PointCloud
+) -> np.ndarray:
     """
     Calculate the translation vector for aligning the source PointCloud with the target using ICP.
 
@@ -273,13 +301,18 @@ def prepare_icp_move(source: o3d.geometry.PointCloud, target: o3d.geometry.Point
     source_tmp = copy.deepcopy(source)
     target_tmp = copy.deepcopy(target)
 
-    initial_transform = np.asarray([[0, 0, -1, 0], [-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]])  # z-axis 180 degree rotation
+    initial_transform = np.asarray(
+        [[0, 0, -1, 0], [-1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 0, 1]]
+    )  # z-axis 180 degree rotation
 
     # Transform the source PointCloud to align with the target
     source_tmp.transform(initial_transform)
-    
+
     # Get the translation vector to align the source with the target
-    move = np.array(target_tmp.get_oriented_bounding_box().get_center() - source_tmp.get_oriented_bounding_box().get_center())
+    move = np.array(
+        target_tmp.get_oriented_bounding_box().get_center()
+        - source_tmp.get_oriented_bounding_box().get_center()
+    )
 
     return move
 
@@ -300,7 +333,11 @@ def do_ICP(
     Returns:
         numpy.ndarray: The final transformation matrix after ICP registration.
     """
-    print(o3d.pipelines.registration.evaluate_registration(source, target, 10, initial_transform))
+    print(
+        o3d.pipelines.registration.evaluate_registration(
+            source, target, 10, initial_transform
+        )
+    )
 
     # ICP Registration
     reg_p2p = o3d.pipelines.registration.registration_icp(
@@ -312,14 +349,18 @@ def do_ICP(
         o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=2000),
     )
 
-    transform_matrix = copy.deepcopy(reg_p2p.transformation)  # Get the final transformation matrix
+    transform_matrix = copy.deepcopy(
+        reg_p2p.transformation
+    )  # Get the final transformation matrix
     # transform_matrix[0,3] /= 1000
     # transform_matrix[1,3] /= 1000
     # transform_matrix[2,3] /= 1000
     return transform_matrix
 
 
-def calculate_transform_matrix(pcd_combined: o3d.geometry.PointCloud) -> Tuple[np.ndarray, np.ndarray]:
+def calculate_transform_matrix(
+    pcd_combined: o3d.geometry.PointCloud,
+) -> Tuple[np.ndarray, np.ndarray]:
     """
     Compute the transformation matrices from the combined point cloud to the camera frame.
 
@@ -332,22 +373,34 @@ def calculate_transform_matrix(pcd_combined: o3d.geometry.PointCloud) -> Tuple[n
             The second matrix is the mesh-to-camera transformation matrix.
     """
     # Load jenga tower mesh from stl file
-    mesh_tower = o3d.io.read_triangle_mesh("../block_recog/mesh/jenga_tower_side_xy_m.stl")  # Jenga Tower Mesh
+    mesh_tower = o3d.io.read_triangle_mesh(
+        os.path.dirname(__file__)+"/../mesh/jenga_tower_side_xy_m.stl"
+    )  # Jenga Tower Mesh
     mesh_tower.compute_vertex_normals()
 
     # Mesh to Pointcloud
-    pcd_tower_from_mesh = copy.deepcopy(mesh_tower.sample_points_uniformly(number_of_points=len(pcd_combined.points)))
+    pcd_tower_from_mesh = copy.deepcopy(
+        mesh_tower.sample_points_uniformly(number_of_points=len(pcd_combined.points))
+    )
     rospy.loginfo("Start ICP ...")
 
     # Calculate vector for initial alignment
-    move = copy.deepcopy(prepare_icp_move(source=pcd_combined, target=pcd_tower_from_mesh))
+    move = copy.deepcopy(
+        prepare_icp_move(source=pcd_combined, target=pcd_tower_from_mesh)
+    )
 
     # Calculate Transform Matrix by ICP (Camera -> Mesh)
-    trans_init = np.asarray([[0, 0, -1, move[0]], [-1, 0, 0, move[1]], [0, 1, 0, move[2]], [0, 0, 0, 1]])
-    trans_matrix = do_ICP(source=pcd_combined, target=pcd_tower_from_mesh, initial_transform=trans_init)
+    trans_init = np.asarray(
+        [[0, 0, -1, move[0]], [-1, 0, 0, move[1]], [0, 1, 0, move[2]], [0, 0, 0, 1]]
+    )
+    trans_matrix = do_ICP(
+        source=pcd_combined, target=pcd_tower_from_mesh, initial_transform=trans_init
+    )
 
     camera_to_mesh_matrix = trans_matrix  # Transform Matrix (Camera -> Mesh)
-    mesh_to_camera_matrix = np.linalg.inv(camera_to_mesh_matrix)  # Transform Matrix (Mesh -> Camera)
+    mesh_to_camera_matrix = np.linalg.inv(
+        camera_to_mesh_matrix
+    )  # Transform Matrix (Mesh -> Camera)
 
     rospy.loginfo("Done ICP")
     rospy.loginfo(f"camera_to_mesh_matrix: {trans_matrix}")
@@ -355,7 +408,9 @@ def calculate_transform_matrix(pcd_combined: o3d.geometry.PointCloud) -> Tuple[n
     return camera_to_mesh_matrix, mesh_to_camera_matrix
 
 
-def transform_blocks(pcd: o3d.geometry.PointCloud, transform_matrix: np.ndarray) -> o3d.geometry.PointCloud:
+def transform_blocks(
+    pcd: o3d.geometry.PointCloud, transform_matrix: np.ndarray
+) -> o3d.geometry.PointCloud:
     """
     Apply a given transformation matrix to the PointCloud.
 
@@ -376,7 +431,9 @@ def transform_blocks(pcd: o3d.geometry.PointCloud, transform_matrix: np.ndarray)
 
 def get_coordinates(
     target_block: str, blocks_pcd_by_color: list, transform_matrix: np.ndarray
-) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[bool], Optional[np.ndarray]]:
+) -> Tuple[
+    Optional[np.ndarray], Optional[np.ndarray], Optional[bool], Optional[np.ndarray]
+]:
     """
     Get the center and TCP (Tool Center Point) target coordinates for a target block.
 
@@ -408,7 +465,7 @@ def get_coordinates(
         for idx, pcd in enumerate(pcds):
             if target_block_color == "init":
                 pass
-            if idx != int(target_block_label):
+            elif idx != int(target_block_label):
                 continue
 
             # new_trans[0,3]*=1000
@@ -418,12 +475,14 @@ def get_coordinates(
             pcd_tower_mesh_coordinate = transform_blocks(pcd, transform_matrix)
 
             # Get axis aligned bounding box's extents [x, y, z]
-            box_extent = pcd_tower_mesh_coordinate.get_axis_aligned_bounding_box().get_extent()
+            box_extent = (
+                pcd_tower_mesh_coordinate.get_axis_aligned_bounding_box().get_extent()
+            )
 
             # Get axis aligned bounding box's center coordinate [x, y, z]
-            aabb_center_coordinate = np.array(pcd_tower_mesh_coordinate.get_axis_aligned_bounding_box().get_box_points()).mean(
-                axis=0
-            )
+            aabb_center_coordinate = np.array(
+                pcd_tower_mesh_coordinate.get_axis_aligned_bounding_box().get_box_points()
+            ).mean(axis=0)
 
             # AABB center coordinate x, y, z
             x_mean = aabb_center_coordinate[0]
@@ -529,7 +588,9 @@ def get_coordinates(
     return block_center_coordinate, tcp_target_coordinate, push, np.array(tower_map)
 
 
-def coordinate_transform(coordinate3D: np.ndarray, transform_matrix: np.ndarray) -> np.ndarray:
+def coordinate_transform(
+    coordinate3D: np.ndarray, transform_matrix: np.ndarray
+) -> np.ndarray:
     """
     Apply a transformation matrix to a 3D coordinate.
 
@@ -542,7 +603,7 @@ def coordinate_transform(coordinate3D: np.ndarray, transform_matrix: np.ndarray)
     """
     # add 1 to the coordinate to make it homogeneous
     coordinate = np.append(coordinate3D, 1)
-    
+
     # apply the transformation matrix and remove the homogeneous coordinate
     new_coordinate = np.inner(transform_matrix, coordinate)[:3]
 

@@ -16,6 +16,8 @@ from cv_bridge import CvBridge
 import numpy as np
 import time
 import func
+import pickle
+import cv2
 
 bridge = CvBridge()
 
@@ -41,24 +43,38 @@ class CoordinateServer:
         GetWorldCoordinates (block_recog.srv.GetWorldCoord): Service to obtain world coordinates for a target block.
     """
 
-    def __init__(self):
+    def __init__(self, fake=False):
         self.tower_transform_initialized = False
 
         self.img_depth = None
         self.img_color = None
 
-        self.ready_to_capture_image = False
-        self.capture_once = 0
+        self.ready_to_capture_image = True
+        self.once_captured = False
 
-        # Define Subscribers that captures images
-        rospy.Subscriber("/rgb/image_raw", Image, self.image_callback_rgb)
-        rospy.Subscriber("/depth_to_rgb/image_raw", Image, self.image_callback_depth)
+        if fake:
+            with open(
+                file="/home/mirinae/catkin_ws/src/amm-jenga-play/block_recog/test_imgs/rgb.p",
+                mode="rb",
+            ) as f:
+                self.img_color = cv2.rotate(pickle.load(f), cv2.ROTATE_180)
+            with open(
+                file="/home/mirinae/catkin_ws/src/amm-jenga-play/block_recog/test_imgs/dep.p",
+                mode="rb",
+            ) as f:
+                self.img_depth = cv2.rotate(pickle.load(f), cv2.ROTATE_180)
+        else:
+            # Define Subscribers that captures images
+            rospy.Subscriber("/rgb/image_raw", Image, self.image_callback_rgb)
+            rospy.Subscriber(
+                "/depth_to_rgb/image_raw", Image, self.image_callback_depth
+            )
 
         # Define Service that determines whether to capture image or not
-        capture_service = rospy.Service("CaptureImage", CaptureImage, self.capture_flag)
+        rospy.Service("CaptureImage", CaptureImage, self.capture_flag)
 
         # Define Service that returns target block's coordinates
-        block_coordinate_service = rospy.Service("GetWorldCoordinates", GetWorldCoord, self.GetWorldCoordinates)
+        rospy.Service("GetWorldCoordinates", GetWorldCoord, self.GetWorldCoordinates)
 
     def find_initial_tower_transform(self) -> None:
         """
@@ -89,16 +105,22 @@ class CoordinateServer:
             blocks_mask_by_color.append(blocks_mask)
 
         # Builds a clean tower point cloud and stores the point clouds of blocks by color.
-        tower_mask, tower_color = func.get_tower_mask(blocks_mask_by_color, blocks_rgb_by_color)
+        tower_mask, tower_color = func.get_tower_mask(
+            blocks_mask_by_color, blocks_rgb_by_color
+        )
 
-        self.pcd_combined, self.block_pcd_by_color = func.build_clean_tower_pcd_from_blocks(
+        (
+            self.pcd_combined,
+            self.block_pcd_by_color,
+        ) = func.build_clean_tower_pcd_from_blocks(
             blocks_mask_by_color, tower_color, self.img_depth
         )
 
         # Calculates the transformation matrix to convert the tower point cloud from mesh frame to camera frame.
-        self.cam_to_mesh_transform_matrix, self.mesh_to_cam_transform_matrix = func.calculate_transform_matrix(
-            self.pcd_combined
-        )
+        (
+            self.cam_to_mesh_transform_matrix,
+            self.mesh_to_cam_transform_matrix,
+        ) = func.calculate_transform_matrix(self.pcd_combined)
 
         # Broadcast TF?
         # Broadcat [mesh -> rgb_camera_link]
@@ -107,12 +129,18 @@ class CoordinateServer:
         # Calculates the transformation matrix to convert the camera frame to the world frame using TF.
         # Wait for lookupTransform to become available
         listener = tf.TransformListener()
-        rospy.logwarn("Waiting for transform between [panda_link0] and [rgb_camera_link]")
-        listener.waitForTransform("panda_link0", "rgb_camera_link", rospy.Time(0), rospy.Duration(5.0))
+        rospy.logwarn(
+            "Waiting for transform between [panda_link0] and [rgb_camera_link]"
+        )
+        listener.waitForTransform(
+            "panda_link0", "rgb_camera_link", rospy.Time(0), rospy.Duration(5.0)
+        )
 
         try:
             # translation, quaternion
-            (trans_cam_to_world, rot_cam_to_world) = listener.lookupTransform("panda_link0", "rgb_camera_link", rospy.Time(0))
+            (trans_cam_to_world, rot_cam_to_world) = listener.lookupTransform(
+                "panda_link0", "rgb_camera_link", rospy.Time(0)
+            )
         except (
             tf.LookupException,
             tf.ConnectivityException,
@@ -121,9 +149,13 @@ class CoordinateServer:
             raise
 
         # Calculate transform matrix from translation and quaternion
-        self.cam_to_world_transform_matrix = func.transform_mat_from_trans_rot(trans_cam_to_world, rot_cam_to_world)
+        self.cam_to_world_transform_matrix = func.transform_mat_from_trans_rot(
+            trans_cam_to_world, rot_cam_to_world
+        )
 
-        rospy.loginfo(f"cam_to_world_transform_matrix : {self.cam_to_world_transform_matrix}")
+        rospy.loginfo(
+            f"cam_to_world_transform_matrix : {self.cam_to_world_transform_matrix}"
+        )
 
         self.transform_matrix_lst = [
             self.mesh_to_cam_transform_matrix,
@@ -150,13 +182,14 @@ class CoordinateServer:
         Returns:
             CaptureImageResponse: The service response object containing the capture status (SUCCESS, FAILED, or SKIPPED).
         """
+        _ = request
         rospy.loginfo("Service CaptureImage")
         print("capture_flag")
 
         resp = CaptureImageResponse()
 
         # Checks if the image has already been captured
-        if self.capture_once > 0:
+        if self.once_captured:
             resp.status = resp.SKIPPED
             return resp
 
@@ -168,7 +201,7 @@ class CoordinateServer:
         if is_success:
             self.find_initial_tower_transform()
             resp.status = resp.SUCCESS
-            self.capture_once += 1
+            self.once_captured = True
             return resp
 
         resp.status = resp.FAILED
@@ -186,7 +219,7 @@ class CoordinateServer:
         """
         if self.img_color is None and self.ready_to_capture_image:
             self.img_color = bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
-            rospy.logwarn(f"RGB image captured (img_color.shape: {self.img_color.shape}))")
+        rospy.logwarn(f"RGB image captured (img_color.shape: {self.img_color.shape}))")
 
     def image_callback_depth(self, msg) -> None:
         """
@@ -200,7 +233,9 @@ class CoordinateServer:
         """
         if self.img_depth is None and self.ready_to_capture_image:
             self.img_depth = bridge.imgmsg_to_cv2(msg, desired_encoding="16UC1")
-            rospy.logwarn(f"Depth image captured (img_depth.shape: {self.img_depth.shape}))")
+        rospy.logwarn(
+            f"Depth image captured (img_depth.shape: {self.img_depth.shape}))"
+        )
 
     def wait_image(self, time_threshold: float = 10.0) -> bool:
         """
@@ -228,7 +263,9 @@ class CoordinateServer:
         rospy.logwarn("...Failed...")
         return False
 
-    def GetWorldCoordinates(self, request: GetWorldCoordRequest) -> GetWorldCoordResponse:
+    def GetWorldCoordinates(
+        self, request: GetWorldCoordRequest
+    ) -> GetWorldCoordResponse:
         """
         Service callback function to get world coordinates of a target block.
 
@@ -261,7 +298,10 @@ class CoordinateServer:
             return resp
 
         # target block info from request
-        target_block_color, target_block_label = request.target_block.split()  # e.g. "green 0"
+        (
+            target_block_color,
+            target_block_label,
+        ) = request.target_block.split()  # e.g. "green 0"
         blocks_pcd_by_color = self.block_pcd_by_color
 
         # coordinates of jenga tower
@@ -293,31 +333,30 @@ class CoordinateServer:
             return resp
 
         # Transform coordinates to world coordinate system
-        coordinate1, coordinate2 = func.transform_coordinates_to_world(coordinate1, coordinate2, self.transform_matrix_lst)
+        coordinate1, coordinate2 = func.transform_coordinates_to_world(
+            coordinate1, coordinate2, self.transform_matrix_lst
+        )
+
+        # Set response
+        resp.center.x = coordinate1[0]
+        resp.center.y = coordinate1[1]
+        resp.center.z = coordinate1[2]
+        resp.tcp_target.x = coordinate2[0]
+        resp.tcp_target.y = coordinate2[1]
+        resp.tcp_target.z = coordinate2[2]
 
         # Set method
         if push:
-            method = "push"
+            resp.method = "push"
         else:
-            method = "pull"
-
+            resp.method = "pull"
         # Convert tower map to ROS message
-        tower_map = bridge.cv2_to_imgmsg(tower_map, encoding="passthrough")
-
-        # Set response
-        resp.center_coordinate.x = coordinate1[0]
-        resp.center_coordinate.y = coordinate1[1]
-        resp.center_coordinate.z = coordinate1[2]
-        resp.tcp_target_coordinate.x = coordinate2[0]
-        resp.tcp_target_coordinate.y = coordinate2[1]
-        resp.tcp_target_coordinate.z = coordinate2[2]
-        resp.method = method
-        resp.tower_map = tower_map
+        resp.tower_map = bridge.cv2_to_imgmsg(tower_map.astype("float"))
 
         return resp
 
 
 if __name__ == "__main__":
-    rospy.init_node("service_server_node")  # init node
-    coordinate_server = CoordinateServer()
+    rospy.init_node("coordinate_server_node", anonymous=True)  # init node
+    CoordinateServer(fake=True)
     rospy.spin()

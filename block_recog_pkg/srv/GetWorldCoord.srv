@@ -1,13 +1,7 @@
 string target_block
 ---
 bool success
-# float64 center_x
-# float64 center_y
-# float64 center_z
-# float64 target_x
-# float64 target_y
-# float64 target_z
-geometry_msgs/Point center_coordinate
-geometry_msgs/Point tcp_target_coordinate
+geometry_msgs/Point center
+geometry_msgs/Point tcp_target
 string method
 sensor_msgs/Image tower_map

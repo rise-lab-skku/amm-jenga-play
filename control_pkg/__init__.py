@@ -1,3 +1,3 @@
-import manipulator
-import gripper
-import scene
+from . import manipulator
+from . import gripper
+from . import scene
