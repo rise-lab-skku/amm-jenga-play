@@ -1,0 +1,38 @@
+red:
+  id: 5
+  type: "crimson"
+  first:
+    lower: [0, 130, 50]
+    upper: [15, 255, 255]
+  second:
+    lower: [160, 130, 50]
+    upper: [179, 255, 255]
+pink:
+  id: 1
+  type: "crimson"
+  first:
+    lower: [0, 55, 80]
+    upper: [10, 130, 255]
+  second:
+    lower: [150, 55, 80]
+    upper: [179, 130, 255]
+green:
+  id: 0
+  type: "other"
+  lower: [50, 50, 50]
+  upper: [85, 255, 255]
+yellow:
+  id: 2
+  type: "other"
+  lower: [20, 80, 80]
+  upper: [40, 255, 255]
+blue:
+  id: 3
+  type: "other"
+  lower: [90, 100, 100]
+  upper: [109, 255, 255]
+violet:
+  id: 4
+  type: "other"
+  lower: [110, 60, 60]
+  upper: [150, 255, 255]

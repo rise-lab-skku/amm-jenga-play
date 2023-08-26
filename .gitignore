@@ -3,3 +3,4 @@ __pycache__/
 moveit_try/__pycache__/
 block_recog_pkg/scripts/__pycache__/
 control_pkg/__pycache__/
+block_recog_pkg/scripts/__pycache__/func.cpython-38.pyc

@@ -16,12 +16,15 @@ from block_recog_pkg.srv import (
 )
 
 from cv_bridge import CvBridge
+
 bridge = CvBridge()
 import numpy as np
 
 
-JENGA_CAPTURE_POSE=[-0.05, -0.5, 0.5,pi / 2, pi / 2, pi / 2]
-DICE_CAPTURE_POSE=[0,0,0,0,0,0]
+JENGA_CAPTURE_POSE = [-0.05, -0.5, 0.5, pi / 2, pi / 2, pi / 2]
+DICE_CAPTURE_POSE = [0, 0, 0, 0, 0, 0]
+RESTRICTED_FLOORS=3
+
 
 def all_close(goal, current, position_tolerance, orientation_tolerance):
     gl = moveit_commander.conversions.pose_to_list(goal)
@@ -43,7 +46,7 @@ def display_trajectory(plan, robot):
 
 def initialize():
     moveit_commander.roscpp_initialize("")
-    rospy.init_node("jenga_main", anonymous=True,disable_signals=True)
+    rospy.init_node("jenga_main", anonymous=True, disable_signals=True)
 
     robot = moveit_commander.RobotCommander()
     print(f"============ Root Link:  {robot.get_root_link():^20} ============")
@@ -56,8 +59,8 @@ def initialize():
     links = robot.get_link_names()
     grasp_link = links[list(map(lambda x: x.find("grasp") > -1, links)).index(True)]
     push_link = links[list(map(lambda x: x.find("push") > -1, links)).index(True)]
-    grasper = control_pkg.manipulator.Commander(grasp_link, move_group,gripper)
-    pusher = control_pkg.manipulator.Commander(push_link, move_group,gripper)
+    grasper = control_pkg.manipulator.Commander(grasp_link, move_group, gripper)
+    pusher = control_pkg.manipulator.Commander(push_link, move_group, gripper)
 
     return robot, move_group, gripper, scene, grasper, pusher
 
@@ -68,10 +71,7 @@ robot, move_group, gripper, scene, grasper, pusher = initialize()
 # rospy.sleep(2)
 ############### take picture and callib ######################
 rospy.wait_for_service("CaptureImage")
-capture_image = rospy.ServiceProxy("CaptureImage", CaptureImage)
-request_capture_image = CaptureImageRequest()
-
-response = capture_image(request_capture_image)
+response = rospy.ServiceProxy("CaptureImage", CaptureImage).call(CaptureImageRequest())
 if response.status == response.FAILED:
     rospy.logwarn("Failed to Capture Image")
 elif response.status == response.SUCCESS:
@@ -80,83 +80,66 @@ elif response.status == response.SKIPPED:
     rospy.loginfo("Image Capture Skipped")
 
 # INIT 1
-# rospy.wait_for_service("GetWorldCoordinates")
-
-# get_coord = rospy.ServiceProxy("GetWorldCoordinates", GetWorldCoord)
-
-# request = GetWorldCoordRequest()
-
-# request.target_block = "init 1"
-
-# response = get_coord(request)
-
-# coord0 = response.center_coordinate
-# coord1 = response.tcp_target_coordinate
-
-# INIT 2
 rospy.wait_for_service("GetWorldCoordinates")
 
-get_coord = rospy.ServiceProxy("GetWorldCoordinates", GetWorldCoord)
+response = rospy.ServiceProxy("GetWorldCoordinates", GetWorldCoord).call(GetWorldCoordRequest(target_block = "init 1"))
+coord0 = response.center
+coord1 = response.tcp_target
 
-request = GetWorldCoordRequest()
+# INIT 2
 
-request.target_block = "init 2"
-
-response = get_coord(request)
+response = rospy.ServiceProxy("GetWorldCoordinates", GetWorldCoord).call(GetWorldCoordRequest(target_block = "init 2"))
 
 coord2 = response.center
 coord3 = response.tcp_target
 
-towermap_imgmsg = response.tower_map
-
-towermap = bridge.imgmsg_to_cv2(towermap_imgmsg)
+towermap = bridge.imgmsg_to_cv2(response.tower_map).astype('int').tolist()
 print(towermap)
+print([coord0, coord1, coord2, coord3])
 input()
-###############give me 4 poinst to make jenga################
-points = [coord0,coord1,coord2,coord3]
-# give me succeeding points
+initial_towermap=towermap
 
-scene.add_jenga(points)
+scene.add_jenga([coord0, coord1, coord2, coord3])
+
+
+def al(color,i):
+    fl=towermap[i]
+    if color in fl:
+        idx=fl.index(color)
+        if idx==1:
+            if fl[0]+fl[2]>=0 and fl[0]*fl[2]>=0:
+                return i,1
+        else:
+            if fl[1]>=0:
+                deep_sol=al(color,i+1)
+                if deep_sol is None:
+                    return i,idx
+                else:
+                    if deep_sol[0]>i+5:
+                        return i,idx
+                    return deep_sol
+    if i<11:
+        return al(color,i+1)
+    else:
+        return None
+
 
 while True:
-    get_dice_color = rospy.ServiceProxy("GetDiceColor", GetDiceColor)
+    # grasper.plan_and_execute(DICE_CAPTURE_POSE)
+    response=rospy.ServiceProxy("GetDiceColor", GetDiceColor).call(GetDiceColorRequest())
 
-    request_dice_color = GetDiceColorRequest()
-
-    response_dice_color = get_dice_color(request_dice_color)
-
-    if response_dice_color.success:
-        dice_color = response_dice_color.dice_color
+    if response.success:
+        dice_color = response.dice_color
     else:
         continue
     
-    # command = input("\njenga to extract: ")  # ex. "green 5"
-    # if command == "q":
-    #     break
 
-    ################### get two points and method #################
-    # color = 'green'
-    # num = 5
-    rospy.wait_for_service("GetWorldCoordinates")
 
-    get_coord = rospy.ServiceProxy("GetWorldCoordinates", GetWorldCoord)
+    index=al(dice_color,RESTRICTED_FLOORS)
+    command='green 5'
+    response= rospy.ServiceProxy("GetWorldCoordinates", GetWorldCoord).call(GetWorldCoordRequest(target_block = command))
 
-    request = GetWorldCoordRequest()
 
-    request.target_block = command
-    print(request)
-    print("heejslfdjsdlkfjlk")
-    response = get_coord(request)
-
-    print(response.success)
-    print(dcp(response.center_x))
-    print(dcp(response.center_y))
-    print(dcp(response.center_z))
-    print(dcp(response.target_x))
-    print(dcp(response.target_y))
-    print(dcp(response.target_z))
-    print(response.push)
-    
     # vision result
     target_point = [
         dcp(response.center_x),

@@ -5,37 +5,11 @@ import open3d as o3d
 import copy
 import rospy
 import os
+import yaml
+import tf
 
-CONFIG = (
-    (((0, 130, 50), (15, 255, 255)), ((160, 130, 50), (179, 255, 255))),
-    (((0, 55, 80), (10, 130, 255)), ((150, 55, 80), (179, 130, 255))),
-    ((70 - 20, 50, 50), (70 + 15, 255, 255)),
-    ((30 - 10, 80, 80), (30 + 10, 255, 255)),
-    ((100 - 10, 100, 100), (100 + 9, 255, 255)),
-    ((130 - 20, 60, 60), (130 + 20, 255, 255)),
-)
-
-
-class Bound:
-    def __init__(self, config):
-        self.lower = config[0]
-        self.upper = config[1]
-
-
-class Crimson:
-    def __init__(self, config):
-        self.first = Bound(config[0])
-        self.second = Bound(config[1])
-
-
-colors = {
-    "green": Bound(CONFIG[2]),
-    "pink": Crimson(CONFIG[1]),
-    "yellow": Bound(CONFIG[3]),
-    "blue": Bound(CONFIG[4]),
-    "violet": Bound(CONFIG[5]),
-    "red": Crimson(CONFIG[0]),
-}
+with open(os.path.dirname(__file__) + "/../data/colors.yaml", "rb") as f:
+    colors = yaml.full_load(f)
 
 
 def img_masking(
@@ -55,49 +29,22 @@ def img_masking(
             The second list contains the corresponding binary masks for each color block.
     """
 
+    def mask(bounds):
+        return cv2.inRange(
+            img_hsv, np.array(bounds["lower"]), np.array(bounds["upper"])
+        )
+
     # Convert to HSV Image
     img_hsv = cv2.cvtColor(img_color, cv2.COLOR_BGR2HSV)
 
-    # Define the lower and upper bounds of each color
-    # RED
-    lower_red1 = np.array([0, 130, 50])
-    upper_red1 = np.array([15, 255, 255])
-    lower_red2 = np.array([160, 130, 50])
-    upper_red2 = np.array([179, 255, 255])
+    val = colors[color]
 
-    # PINK
-    lower_pink1 = np.array([0, 55, 80])
-    upper_pink1 = np.array([10, 130, 255])
-    lower_pink2 = np.array([150, 55, 80])
-    upper_pink2 = np.array([179, 130, 255])
-
-    # GREEN
-    lower_green = (70 - 20, 50, 50)
-    upper_green = (70 + 15, 255, 255)
-
-    # YELLOW
-    lower_yellow = (30 - 10, 80, 80)
-    upper_yellow = (30 + 10, 255, 255)
-
-    # BLUE
-    lower_blue = (100 - 10, 100, 100)
-    upper_blue = (100 + 9, 255, 255)
-
-    # VIOLET
-    lower_violet = (130 - 20, 60, 60)
-    upper_violet = (130 + 20, 255, 255)
-
-    # Make Mask
-    def mask(inst):
-        return cv2.inRange(img_hsv, inst.lower, inst.upper)
-
-    if color == "pink" or color == "red":
-        img_mask_color = mask(colors[color].first) + mask(colors[color].second)
-
+    if val["type"] == "crimson":
+        img_mask_color = mask(val["first"]) + mask(val["second"])
     else:
-        img_mask_color = mask(
-            colors[color]
-        )  # The pixels in the range are white, the rest are black
+        img_mask_color = mask(val)
+
+    # The pixels in the range are white, the rest are black
 
     # Erosion, Dilation for Denoising
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
@@ -257,7 +204,9 @@ def build_clean_tower_pcd_from_blocks(
 
     blocks_pcd_by_color = []
     all_pcd = []
-    for color, block_mask in zip(colors, blocks_mask_by_color):
+    for color, block_mask in zip(
+        sorted(colors.keys(), key=lambda x: colors[x]["id"]), blocks_mask_by_color
+    ):
         rospy.loginfo(
             f"Number of Blocks -> Color: {color}, Recognized Block Numbers: {len(block_mask)}"
         )
@@ -374,7 +323,7 @@ def calculate_transform_matrix(
     """
     # Load jenga tower mesh from stl file
     mesh_tower = o3d.io.read_triangle_mesh(
-        os.path.dirname(__file__)+"/../mesh/jenga_tower_side_xy_m.stl"
+        os.path.dirname(__file__) + "/../data/jenga_tower_side_xy_m.stl"
     )  # Jenga Tower Mesh
     mesh_tower.compute_vertex_normals()
 
@@ -451,13 +400,13 @@ def get_coordinates(
     # Target Block
     target_block_color, target_block_label = target_block.split()  # e.g. 'green', '0'
 
-    colors = ["green", "pink", "yellow", "blue", "violet", "red"]
-
     # Define full tower map (12, 3)
     tower_map = [[255 for _ in range(3)] for _ in range(12)]
 
     # Get Target Block's Coordinates
-    for color_idx, (col, pcds) in enumerate(zip(colors, blocks_pcd_by_color)):
+    for color_idx in range(6):
+        col = sorted(colors.keys(), key=lambda x: colors[x]["id"])[color_idx]
+        pcds = blocks_pcd_by_color[color_idx]
         if target_block_color == "init":
             pass
         elif col != target_block_color:

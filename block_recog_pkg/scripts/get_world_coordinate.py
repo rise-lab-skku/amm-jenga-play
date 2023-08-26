@@ -21,7 +21,6 @@ import cv2
 
 bridge = CvBridge()
 
-colors = ["green", "pink", "yellow", "blue", "violet", "red"]
 
 
 class CoordinateServer:
@@ -94,12 +93,11 @@ class CoordinateServer:
         """
         rospy.loginfo("Find Initial Tower Transform")
 
-        colors = ["green", "pink", "yellow", "blue", "violet", "red"]
         blocks_rgb_by_color = []
         blocks_mask_by_color = []
 
         # Masks the input color image to obtain blocks and their masks for each color.
-        for color in colors:
+        for color in sorted(func.colors.keys(),key=lambda x:func.colors[x]['id']):
             blocks_color, blocks_mask = func.img_masking(self.img_color, color)
             blocks_rgb_by_color.append(blocks_color)
             blocks_mask_by_color.append(blocks_mask)
@@ -309,6 +307,7 @@ class CoordinateServer:
             if int(target_block_label) == 1:
                 coordinate1 = np.array([0.0375, 0.0375, 0])
                 coordinate2 = np.array([0.0375, -0.0375, 0])
+            push=False
             if int(target_block_label) == 2:
                 coordinate1 = np.array([-0.0375, 0.0375, 0])
                 coordinate2 = np.array([-0.0375, -0.0375, 0])
@@ -318,6 +317,8 @@ class CoordinateServer:
                     self.cam_to_mesh_transform_matrix,
                 )
                 push = False
+                resp.tower_map = bridge.cv2_to_imgmsg(tower_map.astype("float"))
+
 
         else:
             # Returns CENTER, TCP_TARGET coordinates and extract method(push).
@@ -351,7 +352,6 @@ class CoordinateServer:
         else:
             resp.method = "pull"
         # Convert tower map to ROS message
-        resp.tower_map = bridge.cv2_to_imgmsg(tower_map.astype("float"))
 
         return resp
 
