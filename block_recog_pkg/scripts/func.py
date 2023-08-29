@@ -8,6 +8,7 @@ import os
 import yaml
 from tf_conversions import *
 import rospkg
+
 pkg_path=rospkg.RosPack().get_path("block_recog_pkg")
 
 with open(os.path.join(pkg_path,"data/test.yaml"), "rb") as f:
@@ -31,7 +32,7 @@ def img_masking(
             The second list contains the corresponding binary masks for each color block.
     """
 
-    
+
 
     # Convert to HSV Image
     img_hsv = cv2.cvtColor(img_color, cv2.COLOR_BGR2HSV)

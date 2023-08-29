@@ -20,9 +20,11 @@ bridge = CvBridge()
 import numpy as np
 
 
-JENGA_CAPTURE_POSE = moveit_commander.conversions.list_to_pose([0, -0.5, 0.5, pi / 2, pi / 2, pi / 2])
+JENGA_CAPTURE_POSE = moveit_commander.conversions.list_to_pose([0, -0.5, 0.4, pi / 2, pi / 2, pi / 2])
 DICE_CAPTURE_POSE = [0, 0, 0, 0, 0, 0]
-RESTRICTED_FLOORS=3
+RESTRICTED_FLOORS = 3
+ESCAPE_JOINT = "panda_joint2"
+ESCAPE_VALUE = -3*pi / 8
 
 
 def all_close(goal, current, position_tolerance, orientation_tolerance):
@@ -32,6 +34,7 @@ def all_close(goal, current, position_tolerance, orientation_tolerance):
     d = dist(gl[:3], cl[:3])
     cos_phi_half = abs(sum(p * q for (p, q) in zip(gl[3:], cl[3:])))
     return d < position_tolerance and cos_phi_half > cos(orientation_tolerance / 2.0)
+
 
 def initialize():
     moveit_commander.roscpp_initialize("")
@@ -48,7 +51,7 @@ def initialize():
     grasp_link = links[list(map(lambda x: x.find("grasp") > -1, links)).index(True)]
     print(grasp_link)
     push_link = links[list(map(lambda x: x.find("push") > -1, links)).index(True)]
-    manipulator=control_pkg.manipulator.Commander(gripper,grasp_link,push_link)
+    manipulator = control_pkg.manipulator.Commander(gripper, grasp_link, push_link)
 
     return robot, gripper, scene, manipulator
 
@@ -56,9 +59,12 @@ def initialize():
 robot, gripper, scene, manipulator = initialize()
 
 # manipulator.ready()
-# manipulator.plan_and_execute(JENGA_CAPTURE_POSE,"grasper")
-print('moved')
+# manipulator.set_joint_value_target(ESCAPE_JOINT, ESCAPE_VALUE)
+# manipulator.plan_and_execute(None, None)
+# manipulator.plan_and_execute(JENGA_CAPTURE_POSE, "grasper")
+print("moved")
 rospy.sleep(2)
+input("dfsdfdsf")
 ############### take picture and callib ######################
 rospy.wait_for_service("CaptureImage")
 response = rospy.ServiceProxy("CaptureImage", CaptureImage).call(CaptureImageRequest())
@@ -72,63 +78,60 @@ elif response.status == response.SKIPPED:
 # INIT 1
 rospy.wait_for_service("GetWorldCoordinates")
 
-response = rospy.ServiceProxy("GetWorldCoordinates", GetWorldCoord).call(GetWorldCoordRequest(target_block = "init 1"))
+response = rospy.ServiceProxy("GetWorldCoordinates", GetWorldCoord).call(GetWorldCoordRequest(target_block="init 1"))
 coord0 = response.center
 coord1 = response.tcp_target
 
 # INIT 2
 
-response = rospy.ServiceProxy("GetWorldCoordinates", GetWorldCoord).call(GetWorldCoordRequest(target_block = "init 2"))
+response = rospy.ServiceProxy("GetWorldCoordinates", GetWorldCoord).call(GetWorldCoordRequest(target_block="init 2"))
 
 coord2 = response.center
 coord3 = response.tcp_target
 
-towermap = bridge.imgmsg_to_cv2(response.tower_map).astype('int').tolist()
+towermap = bridge.imgmsg_to_cv2(response.tower_map).astype("int").tolist()
 print(towermap)
 print([coord0, coord1, coord2, coord3])
 input()
-initial_towermap=towermap
+initial_towermap = towermap
 
 scene.add_jenga([coord0, coord1, coord2, coord3])
 
 
-def al(color,i):
-    fl=towermap[i]
+def al(color, i):
+    fl = towermap[i]
     if color in fl:
-        idx=fl.index(color)
-        if idx==1:
-            if fl[0]+fl[2]>=0 and fl[0]*fl[2]>=0:
-                return i,1
+        idx = fl.index(color)
+        if idx == 1:
+            if fl[0] + fl[2] >= 0 and fl[0] * fl[2] >= 0:
+                return i, 1
         else:
-            if fl[1]>=0:
-                deep_sol=al(color,i+1)
+            if fl[1] >= 0:
+                deep_sol = al(color, i + 1)
                 if deep_sol is None:
-                    return i,idx
+                    return i, idx
                 else:
-                    if deep_sol[0]>i+5:
-                        return i,idx
+                    if deep_sol[0] > i + 5:
+                        return i, idx
                     return deep_sol
-    if i<11:
-        return al(color,i+1)
+    if i < 11:
+        return al(color, i + 1)
     else:
         return None
 
 
 while True:
     # grasper.plan_and_execute(DICE_CAPTURE_POSE)
-    response=rospy.ServiceProxy("GetDiceColor", GetDiceColor).call(GetDiceColorRequest())
+    response = rospy.ServiceProxy("GetDiceColor", GetDiceColor).call(GetDiceColorRequest())
 
     if response.success:
         dice_color = response.dice_color
     else:
         continue
-    
 
-
-    index=al(dice_color,RESTRICTED_FLOORS)
-    command='green 5'
-    response= rospy.ServiceProxy("GetWorldCoordinates", GetWorldCoord).call(GetWorldCoordRequest(target_block = command))
-
+    index = al(dice_color, RESTRICTED_FLOORS)
+    command = "green 5"
+    response = rospy.ServiceProxy("GetWorldCoordinates", GetWorldCoord).call(GetWorldCoordRequest(target_block=command))
 
     # vision result
     target_point = [

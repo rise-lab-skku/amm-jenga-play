@@ -24,7 +24,6 @@ bridge = CvBridge()
 WORLD_LINK='panda_link0'
 CAM_LINK='rgb_camera_link'
 
-
 class CoordinateServer:
     """A class that provides services to capture RGB and depth images and obtain target block's world coordinates.
 
@@ -45,21 +44,22 @@ class CoordinateServer:
     """
 
     def __init__(self, fake=False):
+        self.pkg_path=func.pkg_path
         self.tower_transform_initialized = False
 
         self.img_depth = None
         self.img_color = None
 
-        self.ready_to_capture_image = True
+        self.ready_to_capture_image = False
         self.once_captured = False
 
         if fake:
             with open(
-                os.path.dirname(__file__)+"/../../block_recog/test_imgs/rgb.p", "rb"
+                os.path.join(self.pkg_path,"data/rgb.p"), "rb"
             ) as f:
                 self.img_color = cv2.rotate(pickle.load(f), cv2.ROTATE_180)
             with open(
-                os.path.dirname(__file__)+"/../../block_recog/test_imgs/dep.p", "rb"
+                os.path.join(self.pkg_path,"data/dep.p"), "rb"
             ) as f:
                 self.img_depth = cv2.rotate(pickle.load(f), cv2.ROTATE_180)
         else:
@@ -217,7 +217,7 @@ class CoordinateServer:
         """
         if self.img_color is None and self.ready_to_capture_image:
             self.img_color = bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
-        rospy.logwarn(f"RGB image captured (img_color.shape: {self.img_color.shape}))")
+            rospy.logwarn(f"RGB image captured (img_color.shape: {self.img_color.shape}))")
 
     def image_callback_depth(self, msg) -> None:
         """
@@ -231,7 +231,7 @@ class CoordinateServer:
         """
         if self.img_depth is None and self.ready_to_capture_image:
             self.img_depth = bridge.imgmsg_to_cv2(msg, desired_encoding="16UC1")
-        rospy.logwarn(
+            rospy.logwarn(
             f"Depth image captured (img_depth.shape: {self.img_depth.shape}))"
         )
 
@@ -358,5 +358,5 @@ class CoordinateServer:
 
 if __name__ == "__main__":
     rospy.init_node("coordinate_server_node", anonymous=True)  # init node
-    CoordinateServer(fake=True)
+    CoordinateServer(fake=False)
     rospy.spin()

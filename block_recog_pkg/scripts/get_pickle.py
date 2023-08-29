@@ -13,7 +13,7 @@ def image_callback_rgb(msg):
     img_color = bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
 
     # Save pickle
-    with open("/home/hr/Desktop/rgb.p", "wb") as rgb:
+    with open("/home/hr/Desktop/dice.p", "wb") as rgb:
         pickle.dump(img_color, rgb)
 
 
@@ -28,5 +28,5 @@ def image_callback_depth(msg):
 if __name__ == "__main__":
     rospy.init_node("request_node")
     rospy.Subscriber("/rgb/image_raw", Image, image_callback_rgb)
-    rospy.Subscriber("/depth_to_rgb/image_raw", Image, image_callback_depth)
+    # rospy.Subscriber("/depth_to_rgb/image_raw", Image, image_callback_depth)
     rospy.spin()

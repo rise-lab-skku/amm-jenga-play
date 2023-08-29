@@ -20,7 +20,7 @@ class Commander(moveit_commander.MoveGroupCommander):
         disp_traj = DT()
         disp_traj.trajectory_start = self.get_current_state()  # RobotState
         disp_traj.trajectory.append(plan)
-        
+
         self.disp_traj_pub.publish(disp_traj)
 
     def plan_and_execute(self, pose_goal, eef):
@@ -39,6 +39,7 @@ class Commander(moveit_commander.MoveGroupCommander):
 
         if is_success:
             rospy.loginfo("Executing the plan")
+            input()
             self.execute(traj, wait=True)
 
         self.stop()
@@ -103,7 +104,7 @@ class Commander(moveit_commander.MoveGroupCommander):
                     cartesian_move=extract, avoid_collisions=False
                 )
             rospy.sleep(1)
-            
+
             print("grasp extraction complete")
 
         elif method == "push":  # "push"
