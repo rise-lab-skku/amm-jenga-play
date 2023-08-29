@@ -18,9 +18,11 @@ import time
 import func
 import pickle
 import cv2
+import os
 
 bridge = CvBridge()
-
+WORLD_LINK='panda_link0'
+CAM_LINK='rgb_camera_link'
 
 
 class CoordinateServer:
@@ -53,13 +55,11 @@ class CoordinateServer:
 
         if fake:
             with open(
-                file="/home/mirinae/catkin_ws/src/amm-jenga-play/block_recog/test_imgs/rgb.p",
-                mode="rb",
+                os.path.dirname(__file__)+"/../../block_recog/test_imgs/rgb.p", "rb"
             ) as f:
                 self.img_color = cv2.rotate(pickle.load(f), cv2.ROTATE_180)
             with open(
-                file="/home/mirinae/catkin_ws/src/amm-jenga-play/block_recog/test_imgs/dep.p",
-                mode="rb",
+                os.path.dirname(__file__)+"/../../block_recog/test_imgs/dep.p", "rb"
             ) as f:
                 self.img_depth = cv2.rotate(pickle.load(f), cv2.ROTATE_180)
         else:
@@ -97,8 +97,8 @@ class CoordinateServer:
         blocks_mask_by_color = []
 
         # Masks the input color image to obtain blocks and their masks for each color.
-        for color in sorted(func.colors.keys(),key=lambda x:func.colors[x]['id']):
-            blocks_color, blocks_mask = func.img_masking(self.img_color, color)
+        for i in range(6):
+            blocks_color, blocks_mask = func.img_masking(self.img_color, i)
             blocks_rgb_by_color.append(blocks_color)
             blocks_mask_by_color.append(blocks_mask)
 
@@ -131,7 +131,7 @@ class CoordinateServer:
             "Waiting for transform between [panda_link0] and [rgb_camera_link]"
         )
         listener.waitForTransform(
-            "panda_link0", "rgb_camera_link", rospy.Time(0), rospy.Duration(5.0)
+            WORLD_LINK, CAM_LINK, rospy.Time(0), rospy.Duration(5.0)
         )
 
         try:

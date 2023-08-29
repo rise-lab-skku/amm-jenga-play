@@ -1,6 +1,8 @@
 - name: red
-  lower: [-20, 130, 50]
+  lower: [0, 130, 50]
+  lower2: [160,130,50]
   upper: [15, 255, 255]
+  upper2: [180,255,255]
 - name: yellow
   lower: [20, 80, 80]
   upper: [40, 255, 255]
@@ -14,5 +16,7 @@
   lower: [110, 60, 60]
   upper: [150, 255, 255]
 - name: pink
-  lower: [-30, 55, 80]
+  lower: [0, 55, 80]
+  lower2: [150,55,80]
   upper: [10, 130, 255]
+  upper2: [180,130,255]

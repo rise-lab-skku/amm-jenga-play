@@ -24,12 +24,12 @@ class Commander:
 
     def move(self, width, speed):
         goal = MoveGoal(width, speed)
-        self.move_client.send_goal_and_wait(goal)
+        self.move_client.send_goal(goal)
         return self.move_client.get_result()
 
     def homing(self):
         goal = HomingGoal()
-        self.homing_client.send_goal_and_wait(goal)
+        self.homing_client.send_goal(goal)
         return self.homing_client.get_result()
 
     def stop(self):

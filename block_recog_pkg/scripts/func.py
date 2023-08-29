@@ -6,11 +6,13 @@ import copy
 import rospy
 import os
 import yaml
-import tf
+from tf_conversions import *
+import rospkg
+pkg_path=rospkg.RosPack().get_path("block_recog_pkg")
 
-with open(os.path.dirname(__file__) + "/../data/colors.yaml", "rb") as f:
+with open(os.path.join(pkg_path,"data/test.yaml"), "rb") as f:
     colors = yaml.full_load(f)
-
+print(colors)
 
 def img_masking(
     img_color: np.ndarray, color: str
@@ -29,21 +31,16 @@ def img_masking(
             The second list contains the corresponding binary masks for each color block.
     """
 
-    def mask(bounds):
-        return cv2.inRange(
-            img_hsv, np.array(bounds["lower"]), np.array(bounds["upper"])
-        )
+    
 
     # Convert to HSV Image
     img_hsv = cv2.cvtColor(img_color, cv2.COLOR_BGR2HSV)
 
     val = colors[color]
 
-    if val["type"] == "crimson":
-        img_mask_color = mask(val["first"]) + mask(val["second"])
-    else:
-        img_mask_color = mask(val)
-
+    img_mask_color = cv2.inRange(img_hsv,np.array(val['lower']),np.array(val['upper']))
+    if val['name']=='red' or val['name']=='pink':
+        img_mask_color+=cv2.inRange(img_hsv,np.array(val['lower2']),np.array(val['upper2']))
     # The pixels in the range are white, the rest are black
 
     # Erosion, Dilation for Denoising
@@ -59,7 +56,7 @@ def img_masking(
     _, src_bin = cv2.threshold(img_mask_color, 0, 255, cv2.THRESH_OTSU)
 
     # Seperate Masks using Connnected Pixels
-    cnt, labels, stats, centroids = cv2.connectedComponentsWithStats(src_bin)
+    cnt, labels, stats, _= cv2.connectedComponentsWithStats(src_bin)
 
     blocks_color = []
     blocks_mask = []
@@ -204,11 +201,9 @@ def build_clean_tower_pcd_from_blocks(
 
     blocks_pcd_by_color = []
     all_pcd = []
-    for color, block_mask in zip(
-        sorted(colors.keys(), key=lambda x: colors[x]["id"]), blocks_mask_by_color
-    ):
+    for i, block_mask in enumerate( blocks_mask_by_color  ):
         rospy.loginfo(
-            f"Number of Blocks -> Color: {color}, Recognized Block Numbers: {len(block_mask)}"
+            f"Number of Blocks -> Color: {colors[i]['name']}, Recognized Block Numbers: {len(block_mask)}"
         )
         blocks_pcd = []
         for msk in block_mask:
@@ -405,7 +400,7 @@ def get_coordinates(
 
     # Get Target Block's Coordinates
     for color_idx in range(6):
-        col = sorted(colors.keys(), key=lambda x: colors[x]["id"])[color_idx]
+        col = colors[color_idx]['name']
         pcds = blocks_pcd_by_color[color_idx]
         if target_block_color == "init":
             pass
@@ -574,31 +569,31 @@ def transform_mat_from_trans_rot(trans: list, rot: list) -> np.ndarray:
     e1, e2, e3, e4 = rot
 
     # create the transformation matrix
-    trans_matrix = np.array(
-        [
-            [
-                1 - 2 * (e2**2) - 2 * (e3**2),
-                2 * (e1 * e2 - e3 * e4),
-                2 * (e1 * e3 + e2 * e4),
-                trans[0],
-            ],
-            [
-                2 * (e1 * e2 + e3 * e4),
-                1 - 2 * (e1**2) - 2 * (e3**2),
-                2 * (e2 * e3 - e1 * e4),
-                trans[1],
-            ],
-            [
-                2 * (e1 * e3 - e2 * e4),
-                2 * (e2 * e3 + e1 * e4),
-                1 - 2 * (e1**2) - 2 * (e2**2),
-                trans[2],
-            ],
-            [0, 0, 0, 1],
-        ]
-    )
+    # trans_matrix = np.array(
+    #     [
+    #         [
+    #             1 - 2 * (e2**2) - 2 * (e3**2),
+    #             2 * (e1 * e2 - e3 * e4),
+    #             2 * (e1 * e3 + e2 * e4),
+    #             trans[0],
+    #         ],
+    #         [
+    #             2 * (e1 * e2 + e3 * e4),
+    #             1 - 2 * (e1**2) - 2 * (e3**2),
+    #             2 * (e2 * e3 - e1 * e4),
+    #             trans[1],
+    #         ],
+    #         [
+    #             2 * (e1 * e3 - e2 * e4),
+    #             2 * (e2 * e3 + e1 * e4),
+    #             1 - 2 * (e1**2) - 2 * (e2**2),
+    #             trans[2],
+    #         ],
+    #         [0, 0, 0, 1],
+    #     ]
+    # )
 
-    return trans_matrix
+    return toMatrix(fromTf((trans,rot)))
 
 
 def transform_coordinates_to_world(

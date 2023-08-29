@@ -3,7 +3,6 @@ import moveit_commander
 
 import geometry_msgs.msg
 import control_pkg
-from moveit_msgs.msg import DisplayTrajectory as DT
 from math import pi, dist, cos
 from copy import deepcopy as dcp
 from block_recog_pkg.srv import (
@@ -21,7 +20,7 @@ bridge = CvBridge()
 import numpy as np
 
 
-JENGA_CAPTURE_POSE = [-0.05, -0.5, 0.5, pi / 2, pi / 2, pi / 2]
+JENGA_CAPTURE_POSE = moveit_commander.conversions.list_to_pose([0, -0.5, 0.5, pi / 2, pi / 2, pi / 2])
 DICE_CAPTURE_POSE = [0, 0, 0, 0, 0, 0]
 RESTRICTED_FLOORS=3
 
@@ -34,16 +33,6 @@ def all_close(goal, current, position_tolerance, orientation_tolerance):
     cos_phi_half = abs(sum(p * q for (p, q) in zip(gl[3:], cl[3:])))
     return d < position_tolerance and cos_phi_half > cos(orientation_tolerance / 2.0)
 
-
-def display_trajectory(plan, robot):
-    disp_traj = DT()
-    disp_traj.trajectory_start = robot.get_current_state()  # RobotState
-    disp_traj.trajectory.append(plan)
-
-    disp_traj_pub = rospy.Publisher("/move_group/display_planned_path", DT)
-    disp_traj_pub.publish(disp_traj)
-
-
 def initialize():
     moveit_commander.roscpp_initialize("")
     rospy.init_node("jenga_main", anonymous=True, disable_signals=True)
@@ -52,23 +41,24 @@ def initialize():
     print(f"============ Root Link:  {robot.get_root_link():^20} ============")
     print(f"============ Move Groups:{str(robot.get_group_names()):^20} ============")
 
-    move_group = moveit_commander.MoveGroupCommander("arm")
     gripper = control_pkg.gripper.Commander(fake=True)
     scene = control_pkg.scene.Commander()
 
     links = robot.get_link_names()
     grasp_link = links[list(map(lambda x: x.find("grasp") > -1, links)).index(True)]
+    print(grasp_link)
     push_link = links[list(map(lambda x: x.find("push") > -1, links)).index(True)]
-    grasper = control_pkg.manipulator.Commander(grasp_link, move_group, gripper)
-    pusher = control_pkg.manipulator.Commander(push_link, move_group, gripper)
+    manipulator=control_pkg.manipulator.Commander(gripper,grasp_link,push_link)
 
-    return robot, move_group, gripper, scene, grasper, pusher
+    return robot, gripper, scene, manipulator
 
 
-robot, move_group, gripper, scene, grasper, pusher = initialize()
+robot, gripper, scene, manipulator = initialize()
 
-# grasper.plan_and_execute(JENGA_CAPTURE_POSE)
-# rospy.sleep(2)
+# manipulator.ready()
+# manipulator.plan_and_execute(JENGA_CAPTURE_POSE,"grasper")
+print('moved')
+rospy.sleep(2)
 ############### take picture and callib ######################
 rospy.wait_for_service("CaptureImage")
 response = rospy.ServiceProxy("CaptureImage", CaptureImage).call(CaptureImageRequest())
