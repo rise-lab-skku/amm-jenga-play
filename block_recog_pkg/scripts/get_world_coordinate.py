@@ -97,7 +97,7 @@ class CoordinateServer:
         blocks_mask_by_color = []
 
         # Masks the input color image to obtain blocks and their masks for each color.
-        for i in range(6):
+        for i in range(len(func.colors)):
             blocks_color, blocks_mask = func.img_masking(self.img_color, i)
             blocks_rgb_by_color.append(blocks_color)
             blocks_mask_by_color.append(blocks_mask)
@@ -131,20 +131,13 @@ class CoordinateServer:
             "Waiting for transform between [panda_link0] and [rgb_camera_link]"
         )
         listener.waitForTransform(
-            WORLD_LINK, CAM_LINK, rospy.Time(0), rospy.Duration(5.0)
+            WORLD_LINK, CAM_LINK, rospy.Time(0), rospy.Duration(5)
         )
 
-        try:
             # translation, quaternion
-            (trans_cam_to_world, rot_cam_to_world) = listener.lookupTransform(
-                "panda_link0", "rgb_camera_link", rospy.Time(0)
-            )
-        except (
-            tf.LookupException,
-            tf.ConnectivityException,
-            tf.ExtrapolationException,
-        ):
-            raise
+        (trans_cam_to_world, rot_cam_to_world) = listener.lookupTransform(
+            "panda_link0", "rgb_camera_link", rospy.Time(0)
+        )
 
         # Calculate transform matrix from translation and quaternion
         self.cam_to_world_transform_matrix = func.transform_mat_from_trans_rot(
@@ -358,5 +351,5 @@ class CoordinateServer:
 
 if __name__ == "__main__":
     rospy.init_node("coordinate_server_node", anonymous=True)  # init node
-    CoordinateServer(fake=False)
+    CoordinateServer(fake=True)
     rospy.spin()

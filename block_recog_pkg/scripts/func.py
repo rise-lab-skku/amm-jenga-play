@@ -40,8 +40,6 @@ def img_masking(
     val = colors[color]
 
     img_mask_color = cv2.inRange(img_hsv,np.array(val['lower']),np.array(val['upper']))
-    if val['name']=='red' or val['name']=='pink':
-        img_mask_color+=cv2.inRange(img_hsv,np.array(val['lower2']),np.array(val['upper2']))
     # The pixels in the range are white, the rest are black
 
     # Erosion, Dilation for Denoising
@@ -74,6 +72,9 @@ def img_masking(
 
         blocks_color.append(block_color)
         blocks_mask.append(block_mask)
+
+    cv2.imshow(f"img_mask_color{color}", cv2.bitwise_and(img_color,img_color,mask=img_mask_color))
+    cv2.waitKey(1)
 
     return blocks_color, blocks_mask
 
@@ -400,7 +401,7 @@ def get_coordinates(
     tower_map = [[255 for _ in range(3)] for _ in range(12)]
 
     # Get Target Block's Coordinates
-    for color_idx in range(6):
+    for color_idx in range(len):
         col = colors[color_idx]['name']
         pcds = blocks_pcd_by_color[color_idx]
         if target_block_color == "init":

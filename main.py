@@ -20,7 +20,7 @@ bridge = CvBridge()
 import numpy as np
 
 
-JENGA_CAPTURE_POSE = moveit_commander.conversions.list_to_pose([0, -0.5, 0.4, pi / 2, pi / 2, pi / 2])
+JENGA_CAPTURE_POSE = moveit_commander.conversions.list_to_pose([0.15, -0.5, 0.4, pi / 2, pi / 2, pi / 2])
 DICE_CAPTURE_POSE = [0, 0, 0, 0, 0, 0]
 RESTRICTED_FLOORS = 3
 ESCAPE_JOINT = "panda_joint2"
@@ -62,9 +62,9 @@ robot, gripper, scene, manipulator = initialize()
 # manipulator.set_joint_value_target(ESCAPE_JOINT, ESCAPE_VALUE)
 # manipulator.plan_and_execute(None, None)
 # manipulator.plan_and_execute(JENGA_CAPTURE_POSE, "grasper")
-print("moved")
-rospy.sleep(2)
-input("dfsdfdsf")
+
+input()
+
 ############### take picture and callib ######################
 rospy.wait_for_service("CaptureImage")
 response = rospy.ServiceProxy("CaptureImage", CaptureImage).call(CaptureImageRequest())

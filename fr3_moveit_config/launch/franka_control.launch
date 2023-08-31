@@ -14,7 +14,7 @@
   <!-- as well as MoveIt demo -->
   <include file="$(dirname)/demo.launch" pass_all_args="true">
     <!-- robot description is loaded by franka_control.launch -->
-    <arg name="load_robot_description" value="false" />
+    <arg name="load_robot_description" default="false" />
     <!-- MoveItSimpleControllerManager provides ros_control's JointTrajectory controllers
          as well as GripperCommand actions -->
     <arg name="moveit_controller_manager" value="simple" />
