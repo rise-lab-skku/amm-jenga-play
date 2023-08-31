@@ -11,6 +11,8 @@ from block_recog_pkg.srv import (
 )
 import tf
 from sensor_msgs.msg import Image
+from geometry_msgs.msg import PointStamped
+from std_msgs.msg import Header
 from cv_bridge import CvBridge
 
 import numpy as np
@@ -19,6 +21,8 @@ import func
 import pickle
 import cv2
 import os
+from tf_conversions import *
+
 
 bridge = CvBridge()
 WORLD_LINK='panda_link0'
@@ -98,15 +102,17 @@ class CoordinateServer:
 
         # Masks the input color image to obtain blocks and their masks for each color.
         for i in range(len(func.colors)):
-            blocks_color, blocks_mask = func.img_masking(self.img_color, i)
+            blocks_color, blocks_mask = func.mask_image(self.img_color, i)
             blocks_rgb_by_color.append(blocks_color)
             blocks_mask_by_color.append(blocks_mask)
 
         # Builds a clean tower point cloud and stores the point clouds of blocks by color.
-        tower_mask, tower_color = func.get_tower_mask(
-            blocks_mask_by_color, blocks_rgb_by_color
-        )
+        tower_color = 0
 
+        # Combine masks and color images for each color
+        for color in blocks_rgb_by_color:
+            for block_c in color:
+                tower_color += block_c
         (
             self.pcd_combined,
             self.block_pcd_by_color,
@@ -115,10 +121,9 @@ class CoordinateServer:
         )
 
         # Calculates the transformation matrix to convert the tower point cloud from mesh frame to camera frame.
-        (
-            self.cam_to_mesh_transform_matrix,
-            self.mesh_to_cam_transform_matrix,
-        ) = func.calculate_transform_matrix(self.pcd_combined)
+        trans_matrix=func.calculate_transform_matrix(self.pcd_combined)
+        cam2mesh_tf=toTf(fromMatrix(trans_matrix))
+        tf.TransformBroadcaster().sendTransform(cam2mesh_tf[0],cam2mesh_tf[1],rospy.Time(0),'mesh',CAM_LINK)
 
         # Broadcast TF?
         # Broadcat [mesh -> rgb_camera_link]
@@ -126,33 +131,13 @@ class CoordinateServer:
 
         # Calculates the transformation matrix to convert the camera frame to the world frame using TF.
         # Wait for lookupTransform to become available
-        listener = tf.TransformListener()
+        self.listener = tf.TransformListener()
         rospy.logwarn(
             "Waiting for transform between [panda_link0] and [rgb_camera_link]"
         )
-        listener.waitForTransform(
+        self.listener.waitForTransform(
             WORLD_LINK, CAM_LINK, rospy.Time(0), rospy.Duration(5)
         )
-
-            # translation, quaternion
-        (trans_cam_to_world, rot_cam_to_world) = listener.lookupTransform(
-            "panda_link0", "rgb_camera_link", rospy.Time(0)
-        )
-
-        # Calculate transform matrix from translation and quaternion
-        self.cam_to_world_transform_matrix = func.transform_mat_from_trans_rot(
-            trans_cam_to_world, rot_cam_to_world
-        )
-
-        rospy.loginfo(
-            f"cam_to_world_transform_matrix : {self.cam_to_world_transform_matrix}"
-        )
-
-        self.transform_matrix_lst = [
-            self.mesh_to_cam_transform_matrix,
-            self.cam_to_world_transform_matrix,
-        ]
-
         self.tower_transform_initialized = True  # Done calculating Transform Matrices
 
     def capture_flag(self, request: CaptureImageRequest) -> CaptureImageResponse:
@@ -209,8 +194,8 @@ class CoordinateServer:
             None
         """
         if self.img_color is None and self.ready_to_capture_image:
-            self.img_color = bridge.imgmsg_to_cv2(msg, desired_encoding="bgr8")
-            rospy.logwarn(f"RGB image captured (img_color.shape: {self.img_color.shape}))")
+            self.img_color = bridge.imgmsg_to_cv2(msg, desired_encoding="rgb8")
+            rospy.logwarn(f"RGB image captured (shape: {self.img_color.shape}))")
 
     def image_callback_depth(self, msg) -> None:
         """
@@ -224,9 +209,7 @@ class CoordinateServer:
         """
         if self.img_depth is None and self.ready_to_capture_image:
             self.img_depth = bridge.imgmsg_to_cv2(msg, desired_encoding="16UC1")
-            rospy.logwarn(
-            f"Depth image captured (img_depth.shape: {self.img_depth.shape}))"
-        )
+            rospy.logwarn(f"Depth image captured (shape: {self.img_depth.shape}))")
 
     def wait_image(self, time_threshold: float = 10.0) -> bool:
         """
@@ -327,17 +310,8 @@ class CoordinateServer:
             return resp
 
         # Transform coordinates to world coordinate system
-        coordinate1, coordinate2 = func.transform_coordinates_to_world(
-            coordinate1, coordinate2, self.transform_matrix_lst
-        )
-
-        # Set response
-        resp.center.x = coordinate1[0]
-        resp.center.y = coordinate1[1]
-        resp.center.z = coordinate1[2]
-        resp.tcp_target.x = coordinate2[0]
-        resp.tcp_target.y = coordinate2[1]
-        resp.tcp_target.z = coordinate2[2]
+        resp.center=self.listener.transformPoint('world',PointStamped(header=Header(frame_id='mesh'),point=coordinate1))
+        resp.tcp_target=self.listener.transformPoint('world',PointStamped(header=Header(frame_id='mesh'),point=coordinate2))
 
         # Set method
         if push:
