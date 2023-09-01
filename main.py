@@ -14,26 +14,22 @@ from block_recog_pkg.srv import (
     GetDiceColorRequest,
 )
 
-from cv_bridge import CvBridge
-
-bridge = CvBridge()
 import numpy as np
+from utils import *
 
+DICE_GRASP_POSE=[0.2,0,0.2,0,0,0]
+DICE_ROLL_POSE=[]
+ROLL_JOINT='panda_joint7'
+DICE_WIDTH=0.02
 
-JENGA_CAPTURE_POSE = moveit_commander.conversions.list_to_pose([0.15, -0.5, 0.4, pi / 2, pi / 2, pi / 2])
-DICE_CAPTURE_POSE = [0, 0, 0, 0, 0, 0]
-RESTRICTED_FLOORS = 3
-ESCAPE_JOINT = "panda_joint2"
-ESCAPE_VALUE = -3*pi / 8
+def roll_dice():
+    manipulator.plan_and_execute(DICE_GRASP_POSE)
+    input("please put the dice.")
+    gripper.grasp(DICE_WIDTH,0.1,0.5)
+    manipulator.set_joint_value_target(ROLL_JOINT,)
+    manipulator.go()
+    gripper.move(2*DICE_WIDTH,0.1)
 
-
-def all_close(goal, current, position_tolerance, orientation_tolerance):
-    gl = moveit_commander.conversions.pose_to_list(goal)
-    cl = moveit_commander.conversions.pose_to_list(current)
-
-    d = dist(gl[:3], cl[:3])
-    cos_phi_half = abs(sum(p * q for (p, q) in zip(gl[3:], cl[3:])))
-    return d < position_tolerance and cos_phi_half > cos(orientation_tolerance / 2.0)
 
 
 def initialize():

@@ -5,14 +5,9 @@ import open3d as o3d
 import copy
 import rospy
 import os
-import yaml
-import rospkg
+from utils import *
 
-pkg_path = rospkg.RosPack().get_path("block_recog_pkg")
-colors = yaml.full_load(open(os.path.join(pkg_path, "data/colors.yaml"), "rb"))
-BLOCK_X=0.075
-BLOCK_Y=0.025
-BLOCK_Z=0.015
+
 def mask_image(
     img_rgb: np.ndarray, id: int
 ) -> Tuple[List[np.ndarray], List[np.ndarray]]:

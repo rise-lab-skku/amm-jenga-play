@@ -13,7 +13,6 @@ import tf
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import PointStamped
 from std_msgs.msg import Header
-from cv_bridge import CvBridge
 
 import numpy as np
 import time
@@ -24,9 +23,6 @@ import os
 from tf_conversions import *
 
 
-bridge = CvBridge()
-WORLD_LINK='panda_link0'
-CAM_LINK='rgb_camera_link'
 
 class CoordinateServer:
     """A class that provides services to capture RGB and depth images and obtain target block's world coordinates.
@@ -59,7 +55,7 @@ class CoordinateServer:
 
         if fake:
             with open(
-                os.path.join(self.pkg_path,"data/rgb.p"), "rb"
+                os.path.join(self.pkg_path,), "rb"
             ) as f:
                 self.img_color = cv2.rotate(pickle.load(f), cv2.ROTATE_180)
             with open(
@@ -140,102 +136,6 @@ class CoordinateServer:
         )
         self.tower_transform_initialized = True  # Done calculating Transform Matrices
 
-    def capture_flag(self, request: CaptureImageRequest) -> CaptureImageResponse:
-        """
-        Captures an image and initializes the tower transformation.
-
-        This function performs the following steps:
-        1. Checks if the image has already been captured; if yes, it returns 'SKIPPED'.
-        2. Sets the flag 'ready_to_capture_image' to True, indicating that an image capture is requested.
-        3. Waits for the image capture to complete with a time threshold of 10 seconds (you may need to adjust this value).
-        4. Calls 'find_initial_tower_transform()' to calculate the initial transformation matrices for the tower.
-        5. If the image capture and transformation calculation are successful, it returns 'SUCCESS'.
-        Otherwise, it returns 'FAILED'.
-
-        Args:
-            request: The service request object (CaptureImageRequest).
-
-        Returns:
-            CaptureImageResponse: The service response object containing the capture status (SUCCESS, FAILED, or SKIPPED).
-        """
-        _ = request
-        rospy.loginfo("Service CaptureImage")
-        print("capture_flag")
-
-        resp = CaptureImageResponse()
-
-        # Checks if the image has already been captured
-        if self.once_captured:
-            resp.status = resp.SKIPPED
-            return resp
-
-        # Sets the flag 'ready_to_capture_image' to True, indicating that an image capture is requested.
-        self.ready_to_capture_image = True
-        is_success = self.wait_image(time_threshold=10)
-        # is_success = True
-
-        if is_success:
-            self.find_initial_tower_transform()
-            resp.status = resp.SUCCESS
-            self.once_captured = True
-            return resp
-
-        resp.status = resp.FAILED
-        return resp
-
-    def image_callback_rgb(self, msg) -> None:
-        """
-        Callback function to receive and store RGB images.
-
-        Parameters:
-            msg (sensor_msgs.msg.Image): The ROS message containing the RGB image.
-
-        Returns:
-            None
-        """
-        if self.img_color is None and self.ready_to_capture_image:
-            self.img_color = bridge.imgmsg_to_cv2(msg, desired_encoding="rgb8")
-            rospy.logwarn(f"RGB image captured (shape: {self.img_color.shape}))")
-
-    def image_callback_depth(self, msg) -> None:
-        """
-        Callback function to receive and store depth images.
-
-        Parameters:
-            msg (sensor_msgs.msg.Image): The ROS message containing the depth image.
-
-        Returns:
-            None
-        """
-        if self.img_depth is None and self.ready_to_capture_image:
-            self.img_depth = bridge.imgmsg_to_cv2(msg, desired_encoding="16UC1")
-            rospy.logwarn(f"Depth image captured (shape: {self.img_depth.shape}))")
-
-    def wait_image(self, time_threshold: float = 10.0) -> bool:
-        """
-        Wait for the RGB and depth images to be captured.
-
-        This function waits for the RGB and depth images to be available for a specified time threshold.
-        If both images are captured within the time threshold, the function returns True.
-        If the time threshold is reached and the images are not captured, the function returns False.
-
-        Args:
-            time_threshold (float): The maximum time to wait for the images to be captured, in seconds. Default is 10.0.
-
-        Returns:
-            bool: True if both RGB and depth images are captured within the time threshold, False otherwise.
-        """
-        rospy.logwarn(f"Wait .... (limit: {time_threshold} secs)")
-        start_time = time.time()
-
-        while time.time() - start_time < time_threshold:
-            if self.img_color is not None and self.img_depth is not None:
-                rospy.loginfo("Captured!!!")
-                return True
-            rospy.sleep(1)
-            rospy.loginfo("\twait..")
-        rospy.logwarn("...Failed...")
-        return False
 
     def GetWorldCoordinates(
         self, request: GetWorldCoordRequest
