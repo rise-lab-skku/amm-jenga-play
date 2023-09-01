@@ -19,7 +19,7 @@ class Commander:
 
     def grasp(self, width, speed, force):
         goal = GraspGoal(width, self.epsilon, speed, force)
-        self.grasp_client.send_goal(goal)
+        self.grasp_client.send_goal_and_wait(goal)
         return self.grasp_client.get_result()
 
     def move(self, width, speed):
@@ -29,7 +29,7 @@ class Commander:
 
     def homing(self):
         goal = HomingGoal()
-        self.homing_client.send_goal(goal)
+        self.homing_client.send_goal_and_wait(goal)
         return self.homing_client.get_result()
 
     def stop(self):

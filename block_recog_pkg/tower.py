@@ -1,5 +1,5 @@
 import open3d as o3d
-from utils import *
+from .utils import *
 from os.path import join
 from tf_conversions import *
 

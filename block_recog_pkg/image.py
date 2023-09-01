@@ -1,5 +1,5 @@
 import rospy
-from utils import *
+from .utils import *
 import cv2
 import pickle
 from sensor_msgs.msg import Image
@@ -22,16 +22,16 @@ class Commander:
             rospy.Subscriber(DEP_NODE, Image, self.depth_image_callback)
 
     def rgb_image_callback(self, msg) -> None:
-        if self.rgb is None and self.ready_to_capture_image:
+        if self.rgb is None and self.ready:
             self.rgb = cv2.rotate(
                 bridge.imgmsg_to_cv2(msg, desired_encoding="rgb8"), cv2.ROTATE_180
             )
             rospy.logwarn(f"RGB image captured (shape: {self.rgb.shape}))")
 
     def depth_image_callback(self, msg) -> None:
-        if self.d is None and self.ready_to_capture_image:
+        if self.d is None and self.ready:
             self.d = cv2.rotate(
-                bridge.imgmsg_to_cv2(msg, desired_encoding="mono16"), cv2.ROTATE_180
+                bridge.imgmsg_to_cv2(msg, desired_encoding="16UC1"), cv2.ROTATE_180
             )
             rospy.logwarn(f"Depth image captured (shape: {self.d.shape}))")
 
@@ -58,17 +58,16 @@ class Commander:
 
         masks = []
         for i in range(1, cnt):
-            masks.append((labels == i)*255)
+            masks.append(((labels == i)*255).astype('uint8'))
 
         masks.append(mask)
         return masks
 
     def get_pcds(self, masks):
-        # return a pointcloud object from a list of masks
         pcds=[]
         for mask in masks:
-            rgb_image=o3d.geometry.Image(cv2.bitwise_and(self.rgb,mask))
-            d_image=o3d.geometry.Image(cv2.bitwise_and(self.d,mask))
+            rgb_image=o3d.geometry.Image(cv2.bitwise_and(self.rgb,self.rgb,None,mask))
+            d_image=o3d.geometry.Image(cv2.bitwise_and(self.d,self.d,None,mask))
             rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(rgb_image, d_image, convert_rgb_to_intensity=False)
             pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd_image, intrinsic)
             cl,ind=pcd.remove_radius_outlier(256, 0.025)

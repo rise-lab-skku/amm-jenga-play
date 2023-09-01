@@ -1,7 +1,7 @@
 <launch>
   <arg name="fake" default="false" />
-  <node name="service_server_node" pkg="block_recog_pkg" type="get_world_coordinate.py"
-    output="screen" />
+  <!-- <node name="service_server_node" pkg="block_recog_pkg" type="get_world_coordinate.py"
+    output="screen" /> -->
 
   <node pkg="tf2_ros" type="static_transform_publisher" name="camera_link_broadcaster"
     args="0.072928 0.00391936 0.0550886   0.737269 -0.0107036 0.675499 0.00451955 panda_hand camera_base" />

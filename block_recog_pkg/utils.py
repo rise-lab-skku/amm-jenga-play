@@ -20,9 +20,11 @@ RGB_PKL = "data/rgb.pkl"
 DEP_PKL = "data/dep.pkl"
 WORLD_LINK = "panda_link0"
 CAM_LINK = "rgb_camera_link"
-TOWER_MODEL="data/jenga_tower_side_xy_m.stl"
+TOWER_MODEL = "data/jenga_tower_side_xy_m.stl"
 TIME_LIMIT = rospy.Duration(10)
 kern = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 10))
+
+import open3d as o3d
 
 intrinsic = o3d.camera.PinholeCameraIntrinsic()
 intrinsic.intrinsic_matrix = [
@@ -30,4 +32,4 @@ intrinsic.intrinsic_matrix = [
     [0, 968.635, 775.975],
     [0, 0, 1],
 ]
-INIT_TF = toMatrix(fromMsg(list_to_pose[0,0,0,0,0,pi/2]))
+INIT_TF = toMatrix(fromMsg(list_to_pose([0, 0, 0, 0, 0, pi / 2])))

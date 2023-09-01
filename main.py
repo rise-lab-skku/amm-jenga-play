@@ -1,44 +1,55 @@
 import rospy
 import moveit_commander
 
-import geometry_msgs.msg
 import control_pkg
-from math import pi, dist, cos
+from math import pi
 from copy import deepcopy as dcp
-from block_recog_pkg.srv import (
-    GetWorldCoord,
-    GetWorldCoordRequest,
-    CaptureImage,
-    CaptureImageRequest,
-    GetDiceColor,
-    GetDiceColorRequest,
-)
+# from block_recog_pkg.srv import (
+#     GetWorldCoord,
+#     GetWorldCoordRequest,
+#     GetDiceColor,
+#     GetDiceColorRequest,
+# )
 
 import numpy as np
-from utils import *
 import block_recog_pkg
 import tf
 from tf_conversions import *
+import moveit_msgs
+import trajectory_msgs
 
-
-DICE_GRASP_POSE=[0.2,0,0.2,0,0,0]
-DICE_ROLL_POSE=[]
-ROLL_JOINT='panda_joint7'
-DICE_WIDTH=0.02
-JENGA_CAPTURE_POSE = list_to_pose([0.15, -0.5, 0.4, pi / 2, pi / 2, pi / 2])
+DICE_GRASP_POSE = moveit_commander.conversions.list_to_pose([0.4, -0.1, 0.4, pi, 0, -pi/4])
+DICE_ROLL_POSE = []
+ROLL_JOINT = "panda_joint7"
+DICE_WIDTH = 0.02
+JENGA_CAPTURE_POSE = moveit_commander.conversions.list_to_pose([0.15, -0.5, 0.4, pi / 2, pi / 2, pi / 2])
 DICE_CAPTURE_POSE = [0, 0, 0, 0, 0, 0]
 RESTRICTED_FLOORS = 3
 ESCAPE_JOINT = "panda_joint2"
 ESCAPE_VALUE = -3 * pi / 8
+import threading
+import time
 
 def roll_dice():
-    manipulator.plan_and_execute(DICE_GRASP_POSE)
-    input("please put the dice.")
-    gripper.grasp(DICE_WIDTH,0.1,0.5)
-    manipulator.set_joint_value_target(ROLL_JOINT,)
-    manipulator.go()
-    gripper.move(2*DICE_WIDTH,0.1)
+    # manipulator.plan_and_execute(DICE_GRASP_POSE, None)
+    gripper.homing()
+    print("please put the dice.")
+    rospy.sleep(3)
+    gripper.grasp(DICE_WIDTH, 0.1, 1)
+    # manipulator.ready()
 
+    rt=moveit_msgs.msg.RobotTrajectory()
+    rt.joint_trajectory.joint_names = [f'panda_joint{i}' for i in range(1, 8)]
+    jp = list(manipulator.get_current_joint_values())
+    rt.joint_trajectory.points.append(trajectory_msgs.msg.JointTrajectoryPoint(positions=dcp(jp)))
+    jp[-1]=2
+    rt.joint_trajectory.points.append(trajectory_msgs.msg.JointTrajectoryPoint(positions=dcp(jp), time_from_start=rospy.Duration(2)))
+    t=threading.Thread(target=manipulator.execute,args=[rt])
+    t.start()
+    time.sleep(1)
+    gripper.move(2 * DICE_WIDTH, 0.1)
+    t.join()
+    print('roll dice done')
 
 
 def initialize():
@@ -49,7 +60,7 @@ def initialize():
     print(f"============ Root Link:  {robot.get_root_link():^20} ============")
     print(f"============ Move Groups:{str(robot.get_group_names()):^20} ============")
 
-    gripper = control_pkg.gripper.Commander(fake=True)
+    gripper = control_pkg.gripper.Commander(eps=0.01)
     scene = control_pkg.scene.Commander()
 
     links = robot.get_link_names()
@@ -62,30 +73,36 @@ def initialize():
 
 
 robot, gripper, scene, manipulator = initialize()
+print(manipulator.get_current_pose())
+# manipulator.ready()
+roll_dice()
+input()
 
 # manipulator.ready()
 # manipulator.set_joint_value_target(ESCAPE_JOINT, ESCAPE_VALUE)
 # manipulator.plan_and_execute(None, None)
 # manipulator.plan_and_execute(JENGA_CAPTURE_POSE, "grasper")
 
+image = block_recog_pkg.image.Commander()
 input()
-image=block_recog_pkg.image.Commander()
 image.capture()
-colors=image.colors # need deepcopy?
+colors = block_recog_pkg.image.colors  # need deepcopy?
 
 for i, color in enumerate(colors):
-    color['masks']=image.get_masks(i)
+    color["masks"] = image.get_masks(i)
     rospy.loginfo(f"Color: {color['name']}, Recognized Block Numbers: {len(color['masks'])-1}")
-    color['pcds']=image.get_pcds(color['masks'])
+    color["pcds"] = image.get_pcds(color["masks"])
+    rospy.loginfo(f"Color: {color['name']}, pcd generated")
 
-tower=block_recog_pkg.tower.Commander(color['pcds'][-1] for color in colors)
+input()
+tower = block_recog_pkg.tower.Commander(color["pcds"][-1] for color in colors)
 rospy.loginfo("Start ICP ...")
 
 listener = tf.TransformListener()
-mat2toMatrix(fromTf(listener.lookupTransform(WORLD_LINK, CAM_LINK, rospy.Time(0))))
-mat1=tower.get_transform()
-world2tower=toTf(fromMatrix(np.inner(mat1,mat2)))
-tf.TransformBroadcaster().sendTransform(world2tower[0],world2tower[1],rospy.Time(0),'mesh',WORLD_LINK)
+mat2 = toMatrix(fromTf(listener.lookupTransform(WORLD_LINK, CAM_LINK, rospy.Time(0))))
+mat1 = tower.get_transform()
+world2tower = toTf(fromMatrix(np.inner(mat1, mat2)))
+tf.TransformBroadcaster().sendTransform(world2tower[0], world2tower[1], rospy.Time(0), "mesh", WORLD_LINK)
 
 # INIT 1
 rospy.wait_for_service("GetWorldCoordinates")
