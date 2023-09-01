@@ -48,6 +48,7 @@ class Commander:
         self.hsv = cv2.cvtColor(self.rgb, cv2.COLOR_RGB2HSV)
 
     def get_masks(self, id):
+        # return a list of masks, the last one is the combination of all masks
         color = colors[id]
         mask = cv2.inRange(self.hsv, np.array(color["lower"]), np.array(color["upper"]))
 
@@ -59,7 +60,22 @@ class Commander:
         for i in range(1, cnt):
             masks.append((labels == i)*255)
 
+        masks.append(mask)
         return masks
+
+    def get_pcds(self, masks):
+        # return a pointcloud object from a list of masks
+        pcds=[]
+        for mask in masks:
+            rgb_image=o3d.geometry.Image(cv2.bitwise_and(self.rgb,mask))
+            d_image=o3d.geometry.Image(cv2.bitwise_and(self.d,mask))
+            rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(rgb_image, d_image, convert_rgb_to_intensity=False)
+            pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd_image, intrinsic)
+            cl,ind=pcd.remove_radius_outlier(256, 0.025)
+            pcds.append(cl.select_by_index(ind))
+
+        return pcds
+
 
 if __name__=="__main__":
     rospy.init_node('imageprocess',anonymous=True,disable_signals=True)

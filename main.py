@@ -16,11 +16,20 @@ from block_recog_pkg.srv import (
 
 import numpy as np
 from utils import *
+import block_recog_pkg
+import tf
+from tf_conversions import *
+
 
 DICE_GRASP_POSE=[0.2,0,0.2,0,0,0]
 DICE_ROLL_POSE=[]
 ROLL_JOINT='panda_joint7'
 DICE_WIDTH=0.02
+JENGA_CAPTURE_POSE = list_to_pose([0.15, -0.5, 0.4, pi / 2, pi / 2, pi / 2])
+DICE_CAPTURE_POSE = [0, 0, 0, 0, 0, 0]
+RESTRICTED_FLOORS = 3
+ESCAPE_JOINT = "panda_joint2"
+ESCAPE_VALUE = -3 * pi / 8
 
 def roll_dice():
     manipulator.plan_and_execute(DICE_GRASP_POSE)
@@ -60,16 +69,23 @@ robot, gripper, scene, manipulator = initialize()
 # manipulator.plan_and_execute(JENGA_CAPTURE_POSE, "grasper")
 
 input()
+image=block_recog_pkg.image.Commander()
+image.capture()
+colors=image.colors # need deepcopy?
 
-############### take picture and callib ######################
-rospy.wait_for_service("CaptureImage")
-response = rospy.ServiceProxy("CaptureImage", CaptureImage).call(CaptureImageRequest())
-if response.status == response.FAILED:
-    rospy.logwarn("Failed to Capture Image")
-elif response.status == response.SUCCESS:
-    rospy.loginfo("Image Captured")
-elif response.status == response.SKIPPED:
-    rospy.loginfo("Image Capture Skipped")
+for i, color in enumerate(colors):
+    color['masks']=image.get_masks(i)
+    rospy.loginfo(f"Color: {color['name']}, Recognized Block Numbers: {len(color['masks'])-1}")
+    color['pcds']=image.get_pcds(color['masks'])
+
+tower=block_recog_pkg.tower.Commander(color['pcds'][-1] for color in colors)
+rospy.loginfo("Start ICP ...")
+
+listener = tf.TransformListener()
+mat2toMatrix(fromTf(listener.lookupTransform(WORLD_LINK, CAM_LINK, rospy.Time(0))))
+mat1=tower.get_transform()
+world2tower=toTf(fromMatrix(np.inner(mat1,mat2)))
+tf.TransformBroadcaster().sendTransform(world2tower[0],world2tower[1],rospy.Time(0),'mesh',WORLD_LINK)
 
 # INIT 1
 rospy.wait_for_service("GetWorldCoordinates")
