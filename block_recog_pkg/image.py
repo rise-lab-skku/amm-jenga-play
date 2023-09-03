@@ -23,16 +23,12 @@ class Commander:
 
     def rgb_image_callback(self, msg) -> None:
         if self.rgb is None and self.ready:
-            self.rgb = cv2.rotate(
-                bridge.imgmsg_to_cv2(msg, desired_encoding="rgb8"), cv2.ROTATE_180
-            )
+            self.rgb = cv2.rotate(bridge.imgmsg_to_cv2(msg, "rgb8"), cv2.ROTATE_180)
             rospy.logwarn(f"RGB image captured (shape: {self.rgb.shape}))")
 
     def depth_image_callback(self, msg) -> None:
         if self.d is None and self.ready:
-            self.d = cv2.rotate(
-                bridge.imgmsg_to_cv2(msg, desired_encoding="16UC1"), cv2.ROTATE_180
-            )
+            self.d = cv2.rotate(bridge.imgmsg_to_cv2(msg, "16UC1"), cv2.ROTATE_180)
             rospy.logwarn(f"Depth image captured (shape: {self.d.shape}))")
 
     def capture(self):
@@ -51,33 +47,34 @@ class Commander:
         # return a list of masks, the last one is the combination of all masks
         color = colors[id]
         mask = cv2.inRange(self.hsv, np.array(color["lower"]), np.array(color["upper"]))
-
         mask = cv2.dilate(cv2.erode(mask, kern), kern)
 
         cnt, labels = cv2.connectedComponents(mask)
 
         masks = []
         for i in range(1, cnt):
-            masks.append(((labels == i)*255).astype('uint8'))
+            masks.append(labels == i)
 
-        masks.append(mask)
+        masks.append(mask == 255)
         return masks
 
-    def get_pcds(self, masks):
-        pcds=[]
-        for mask in masks:
-            rgb_image=o3d.geometry.Image(cv2.bitwise_and(self.rgb,self.rgb,None,mask))
-            d_image=o3d.geometry.Image(cv2.bitwise_and(self.d,self.d,None,mask))
-            rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(rgb_image, d_image, convert_rgb_to_intensity=False)
-            pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd_image, intrinsic)
-            cl,ind=pcd.remove_radius_outlier(256, 0.025)
-            pcds.append(cl.select_by_index(ind))
+    def get_pcd(self, mask):
+        r = self.rgb[:, :, 0] * mask
+        g = self.rgb[:, :, 1] * mask
+        b = self.rgb[:, :, 2] * mask
+        d = self.d * mask
 
-        return pcds
+        rgb_image = o3d.geometry.Image(np.stack((r, g, b), axis=2))
+        d_image = o3d.geometry.Image(d)
+        rgbd_image = o3d.geometry.RGBDImage.create_from_color_and_depth(
+            rgb_image, d_image, convert_rgb_to_intensity=False
+        )
+        pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd_image, intrinsic)
+
+        return pcd.remove_statistical_outlier(20, 2)[1]
 
 
-if __name__=="__main__":
-    rospy.init_node('imageprocess',anonymous=True,disable_signals=True)
-    image=Commander(fake=True)
+if __name__ == "__main__":
+    rospy.init_node("imageprocess", anonymous=True, disable_signals=True)
+    image = Commander(fake=True)
     image.capture()
-    yellow_masks=image.get_masks(1)

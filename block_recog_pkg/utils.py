@@ -18,11 +18,11 @@ RGB_NODE = "/rgb/image_raw"
 DEP_NODE = "/depth_to_rgb/image_raw"
 RGB_PKL = "data/rgb.pkl"
 DEP_PKL = "data/dep.pkl"
-WORLD_LINK = "panda_link0"
-CAM_LINK = "rgb_camera_link"
 TOWER_MODEL = "data/jenga_tower_side_xy_m.stl"
 TIME_LIMIT = rospy.Duration(10)
-kern = cv2.getStructuringElement(cv2.MORPH_RECT, (10, 10))
+kern = cv2.getStructuringElement(cv2.MORPH_RECT, (5,5))
+listener = tf.TransformListener()
+
 
 import open3d as o3d
 

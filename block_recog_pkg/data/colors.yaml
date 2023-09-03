@@ -2,7 +2,7 @@
   lower: [160, 130, 50]
   upper: [180, 255, 255]
 - name: yellow
-  lower: [20, 80, 80]
+  lower: [20, 100, 100]
   upper: [40, 255, 255]
 - name: green
   lower: [45, 80, 80]
@@ -15,4 +15,4 @@
   upper: [150, 255, 255]
 - name: pink
   lower: [150, 35, 100]
-  upper: [180, 125, 255]
+  upper: [175, 130, 255]
