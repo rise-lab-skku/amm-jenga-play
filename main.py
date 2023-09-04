@@ -5,22 +5,18 @@ import control_pkg
 from math import pi
 from copy import deepcopy as dcp
 import numpy as np
-import block_recog_pkg
+# import block_recog_pkg
 import tf
 from tf_conversions import *
 import moveit_msgs
 import open3d as o3d
 import trajectory_msgs
 
-DICE_GRASP_POSE = moveit_commander.conversions.list_to_pose(
-    [0.4, -0.1, 0.4, pi, 0, -pi / 4]
-)
+DICE_GRASP_POSE = moveit_commander.conversions.list_to_pose([0.4, -0.1, 0.4, pi, 0, -pi / 4])
 DICE_ROLL_POSE = []
 ROLL_JOINT = "panda_joint7"
 DICE_WIDTH = 0.02
-JENGA_CAPTURE_POSE = moveit_commander.conversions.list_to_pose(
-    [0.15, -0.5, 0.4, pi / 2, pi / 2, pi / 2]
-)
+JENGA_CAPTURE_POSE = moveit_commander.conversions.list_to_pose([0.15, -0.5, 0.4, pi / 2, pi / 2, pi / 2])
 DICE_CAPTURE_POSE = [0, 0, 0, 0, 0, 0]
 RESTRICTED_FLOORS = 3
 ESCAPE_JOINT = "panda_joint2"
@@ -36,25 +32,36 @@ from trajectory_msgs.msg import JointTrajectoryPoint as JTP
 
 def roll_dice():
     # goto pre-determined pose, init gripper, and then grasp dice and go back to ready pose
-    manipulator.plan_and_execute(DICE_GRASP_POSE, None)
+    # manipulator.plan_and_execute(DICE_GRASP_POSE, None)
     gripper.homing()
-    input("please put the dice.")
-    gripper.grasp(DICE_WIDTH, 0.1, 1)
-    manipulator.ready()
+    print("please put the dice.")
+    rospy.sleep(3.5)
+    gripper.grasp(DICE_WIDTH, 0.1, 1.5)
+    # manipulator.ready()
 
     # set first waypoint to ready pose
     rt = RT()
     rt.joint_trajectory.joint_names = [f"panda_joint{i}" for i in range(1, 8)]
-    jp = list(
-        manipulator.get_named_target_values("ready").values()
-    )  # get named ~~ returns dictionary
-    rt.joint_trajectory.points.append(JTP(positions=dcp(jp)))
-
+    jp = manipulator.get_current_joint_values()  # get named ~~ returns dictionary
+    rt.joint_trajectory.points.append(JTP(positions=dcp(jp),velocities=[0]*7))
+    jp[-1]=0
+    rt.joint_trajectory.points.append(JTP(positions=dcp(jp), time_from_start=rospy.Duration(2),velocities=[0]*7))
+    # manipulator.display_trajectory(rt)
+    # input()
+    manipulator.execute(rt)
+    # input()
     # set joint7's goal angle to +2rad, reach the goal in 2secs
-    jp[-1] = 2
-    rt.joint_trajectory.points.append(
-        JTP(positions=dcp(jp), time_from_start=rospy.Duration(2))
-    )
+    rt.joint_trajectory.points.pop(0)
+    rt.joint_trajectory.points[0].time_from_start = rospy.Duration(0)
+    jp[-1] = pi/2
+    rt.joint_trajectory.points.append(JTP(positions=dcp(jp), velocities=[0]*6+[pi/2],time_from_start=rospy.Duration(2)))
+    jp[-1]=3*pi/4
+    rt.joint_trajectory.points.append(JTP(positions=dcp(jp), velocities=[0]*7,time_from_start=rospy.Duration(3)))
+    # manipulator.display_trajectory(rt)
+    # input()
+    manipulator.execute(rt,wait=False)
+    while manipulator.get_current_joint_values()[-1]<3*pi/8:
+        pass
 
     gripper.move(2 * DICE_WIDTH, 0.1)
     print("roll dice done")
@@ -68,7 +75,7 @@ def initialize():
     print(f"============ Root Link:  {robot.get_root_link():^20} ============")
     print(f"============ Move Groups:{str(robot.get_group_names()):^20} ============")
 
-    gripper = control_pkg.gripper.Commander(fake=True)
+    gripper = control_pkg.gripper.Commander()
     scene = control_pkg.scene.Commander()
 
     links = robot.get_link_names()
@@ -81,8 +88,9 @@ def initialize():
 
 
 robot, gripper, scene, manipulator = initialize()
+print('init done')
 # manipulator.ready()
-# roll_dice()
+roll_dice()
 input()
 
 # manipulator.ready()
@@ -98,9 +106,7 @@ total_points = 0
 total_pcd = o3d.geometry.PointCloud()
 for i, color in enumerate(colors):
     color["masks"] = image.get_masks(i)
-    rospy.loginfo(
-        f"Color: {color['name']}, recognized block bnmbers: {len(color['masks'])-1}"
-    )
+    rospy.loginfo(f"Color: {color['name']}, recognized {len(color['masks']) - 1} blocks")
 
     color["pcd"] = image.get_pcd(color["masks"][-1])
     points = color["pcd"].points
@@ -117,9 +123,7 @@ mat1 = tower.get_transform(total_pcd)
 listener = tf.TransformListener()
 mat2 = toMatrix(fromTf(listener.lookupTransform(WORLD_LINK, CAM_LINK, rospy.Time(0))))
 world2tower = toTf(fromMatrix(np.inner(mat1, mat2)))
-tf.TransformBroadcaster().sendTransform(
-    world2tower[0], world2tower[1], rospy.Time(0), "mesh", WORLD_LINK
-)
+tf.TransformBroadcaster().sendTransform(world2tower[0], world2tower[1], rospy.Time(0), "mesh", WORLD_LINK)
 
 tower.build()
 scene.add_jenga(tower.bases)
