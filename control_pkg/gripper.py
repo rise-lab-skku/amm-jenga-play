@@ -5,6 +5,7 @@ from actionlib import SimpleActionClient as SAC
 class Commander:
     def __init__(self, eps=0.05, fake=False):
         self.epsilon = GraspEpsilon(eps, eps)
+        self.recent_client = None
 
         self.grasp_client = SAC("/franka_gripper/grasp", GraspAction)
         self.move_client = SAC("/franka_gripper/move", MoveAction)
@@ -19,29 +20,42 @@ class Commander:
 
     def grasp(self, width, speed, force):
         goal = GraspGoal(width, self.epsilon, speed, force)
-        self.grasp_client.send_goal_and_wait(goal)
-        return self.grasp_client.get_result()
+        self.recent_client = self.grasp_client
+        return self._pend(goal)
 
     def move(self, width, speed):
         goal = MoveGoal(width, speed)
-        self.move_client.send_goal(goal)
-        return self.move_client.get_result()
+        self.recent_client = self.move_client
+        return self._pend(goal)
 
     def homing(self):
         goal = HomingGoal()
-        self.homing_client.send_goal_and_wait(goal)
-        return self.homing_client.get_result()
+        self.recent_client = self.homing_client
+        return self._pend(goal)
 
     def stop(self):
         goal = StopGoal()
         self.stop_client.send_goal(goal)
+        if self.recent_client:
+            self.recent_client.cancel_goal()
+            self.recent_client = None
+        self.stop_client.wait_for_result()
+        result=self.stop_client.get_result()
+        if result.stopped:
+            rospy.logwarn("Gripper emergency stopped.")
+        else:
+            rospy.logerr("Gripper emergency stop failed.")
+        return result
 
-        # self.grasp_client.cancel_goal()
-        # self.move_client.cancel_goal()
-        # self.homing_client.cancel_goal()
+    def _pend(self, goal):
+        self.recent_client.send_goal(goal)
+        while not self.recent_client.get_state():
+            pass
+        return self.recent_client.get_state()
 
-        return self.stop_client.get_state()
-
+    def wait(self):
+        self.recent_client.wait_for_result()
+        return self.recent_client.get_result()
 
 def test(gripper):
     try:
@@ -51,10 +65,13 @@ def test(gripper):
                 width = float(input("grasp width:"))
                 speed = float(input("grasp speed:"))
                 force = float(input("grasp force:"))
-                print(
-                    f"Trying grasping into ({width} \u00B1 {gripper.epsilon.inner}) [m] by {speed} [m/s] until reaching {force} [N]..."
-                )
-                print(gripper.grasp(width, speed, force))
+
+                if gripper.grasp(width, speed, force) == 1:
+                    print(
+                        f"Trying grasping into ({width} \u00B1 {gripper.epsilon.inner}) [m] by {speed} [m/s] until reaching {force} [N]..."
+                    )
+                else:
+                    print("rejection")
 
             elif command == "move":
                 width = float(input("move width:"))
@@ -68,9 +85,12 @@ def test(gripper):
                 break
             else:
                 print("command error.")
+                continue
+
+            print(gripper.wait())
+
     except KeyboardInterrupt:
-        gripper.stop()
-        print("\n\nstopped.")
+        print(gripper.stop())
         test(gripper)
 
 
@@ -78,5 +98,5 @@ if __name__ == "__main__":
     import rospy
 
     rospy.init_node("gripper_commander_test", disable_signals=True)
-    gripper = Commander(eps=float(input("grasp epsilon:")),fake=True)
+    gripper = Commander(eps=float(input("grasp epsilon:")))
     test(gripper)
