@@ -75,7 +75,7 @@ def initialize():
     print(f"============ Root Link:  {robot.get_root_link():^20} ============")
     print(f"============ Move Groups:{str(robot.get_group_names()):^20} ============")
 
-    gripper = control_pkg.gripper.Commander()
+    gripper = control_pkg.gripper.Commander(True)
     scene = control_pkg.scene.Commander()
 
     links = robot.get_link_names()
@@ -86,9 +86,13 @@ def initialize():
 
     return robot, gripper, scene, manipulator
 
-
-robot, gripper, scene, manipulator = initialize()
+print('hello')
+rospy.init_node("jenga_main", anonymous=True, disable_signals=True)
+gripper = control_pkg.gripper.Commander(0.01,fake=True)
+# robot, gripper, scene, manipulator = initialize()
 print('init done')
+gripper.__pend(1)
+input()
 # manipulator.ready()
 roll_dice()
 input()
