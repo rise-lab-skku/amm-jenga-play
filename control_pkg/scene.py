@@ -5,6 +5,8 @@ import moveit_msgs.msg
 import rospy
 from numpy import mean, arctan, pi
 
+from geometry_msgs.msg import PoseStamped
+
 
 JENGA_NAME = "jenga_tower"
 JENGA_SIZE = (0.080, 0.080, 0.62)
@@ -27,15 +29,19 @@ class Commander(PSI):
         # box_pose.pose.position.y = -0.4
         # box_pose.pose.position.z = 0.31
         else:
-            x_mean = mean(points[i].x for i in range(4))
-            y_mean = mean(points[i].y for i in range(4))
+            x_mean = mean([points[i].x for i in range(4)])
+            y_mean = mean([points[i].y for i in range(4)])
 
             dx = points[0].x - points[1].x
             dy = points[0].y - points[1].y
-            yaw = arctan(dy / dx) + pi / 2
+            yaw = arctan(dy / dx)
 
-            box_pose = list_to_pose([x_mean, y_mean, JENGA_Z, pi / 2, pi / 2, yaw])
-        self.add_box(JENGA_NAME, box_pose, size=JENGA_SIZE)
+            print(x_mean, y_mean, yaw)
+
+
+            box_pose = list_to_pose([x_mean, y_mean, JENGA_Z, 0,0, yaw])
+            ps=PoseStamped(pose=box_pose,header=rospy.Header(frame_id='world',stamp=rospy.Time.now()))
+        self.add_box(JENGA_NAME, ps, size=JENGA_SIZE)
         return self.wait_for_state_update(box_is_known=True, timeout=timeout)
 
     def wait_for_state_update(

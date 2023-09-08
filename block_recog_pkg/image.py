@@ -13,6 +13,7 @@ class Commander:
         self.d = None
 
         self.ready = False
+        self.colors=colors
 
         if fake:
             self.rgb = pickle.load(open(join(pkg_path, RGB_PKL), "rb"))
@@ -45,7 +46,7 @@ class Commander:
 
     def get_masks(self, id):
         # return a list of masks, the last one is the combination of all masks
-        color = colors[id]
+        color = self.colors[id]
         mask = cv2.inRange(self.hsv, np.array(color["lower"]), np.array(color["upper"]))
         mask = cv2.dilate(cv2.erode(mask, kern), kern)
 
@@ -56,6 +57,9 @@ class Commander:
             masks.append(labels == i)
 
         masks.append(mask == 255)
+        cv2.imshow("mask", mask)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
         return masks
 
     def get_pcd(self, mask):
@@ -70,8 +74,18 @@ class Commander:
             rgb_image, d_image, convert_rgb_to_intensity=False
         )
         pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd_image, intrinsic)
+        a=pcd.remove_statistical_outlier(300, 1.5)[0]
+        o3d.visualization.draw_geometries([a])
+        return a
+        # return pcd.remove_statistical_outlier(20, 2)[0]
 
-        return pcd.remove_statistical_outlier(20, 2)[1]
+    def calculate_area(self, mask):
+        return sum([cv2.contourArea(cnt) for cnt in cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[0]])
+
+    def clear(self):
+        self.rgb = None
+        self.d = None
+        self.ready = False
 
 
 if __name__ == "__main__":

@@ -2,15 +2,15 @@ import rospy
 from math import pi, dist, cos, atan
 import moveit_commander
 from moveit_msgs.msg import DisplayTrajectory as DT
+from copy import deepcopy as dcp
 
 
 class Commander(moveit_commander.MoveGroupCommander):
-    def __init__(self,gripper,grasp_link,push_link):
+    def __init__(self,grasp_link,push_link):
         super().__init__('arm')
-        self.gripper = gripper
         self.grasp_link=grasp_link
         self.push_link=push_link
-        self.disp_traj_pub = rospy.Publisher("/move_group/display_planned_path", DT)
+        self.disp_traj_pub = rospy.Publisher("/move_group/display_planned_path", DT,queue_size=1)
 
     def ready(self):
         self.set_named_target('ready')
@@ -52,7 +52,7 @@ class Commander(moveit_commander.MoveGroupCommander):
         wpose.position.x += cartesian_move[0]
         wpose.position.y += cartesian_move[1]
         wpose.position.z += cartesian_move[2]
-        waypoints.append(wpose)
+        waypoints.append(dcp(wpose))
 
         plan, fraction = move_group.compute_cartesian_path(
             waypoints, 0.01, 0.0, avoid_collisions
@@ -124,10 +124,3 @@ class Commander(moveit_commander.MoveGroupCommander):
             rospy.sleep(1)
             self.gripper.homing()
             print("push extraction complete")
-        else:
-            print("wrong method")
-def test(manipulator, gripper):
-    pass
-
-if __name__=="__main__":
-    pass
