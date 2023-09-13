@@ -57,9 +57,11 @@ class Commander:
             masks.append(labels == i)
 
         masks.append(mask == 255)
-        cv2.imshow("mask", mask)
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+
+        # if id==4 or id==5:
+        #     cv2.imshow("mask", mask)
+        #     cv2.waitKey(0)
+        #     cv2.destroyAllWindows()
         return masks
 
     def get_pcd(self, mask):
@@ -74,8 +76,8 @@ class Commander:
             rgb_image, d_image, convert_rgb_to_intensity=False
         )
         pcd = o3d.geometry.PointCloud.create_from_rgbd_image(rgbd_image, intrinsic)
-        a=pcd.remove_statistical_outlier(300, 1.5)[0]
-        o3d.visualization.draw_geometries([a])
+        a=pcd.remove_statistical_outlier(350, 1)[0]
+        # o3d.visualization.draw_geometries([a])
         return a
         # return pcd.remove_statistical_outlier(20, 2)[0]
 

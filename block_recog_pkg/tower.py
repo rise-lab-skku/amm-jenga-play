@@ -13,12 +13,15 @@ class Commander:
         # self.pcd = o3d.geometry.sample_points_uniformly(self.mesh, num)
         self.pcd = self.mesh.sample_points_uniformly(num)
 
-    def get_transform(self,pcd):
+    def get_transform(self,pcd_tmp):
+        pcd = dcp(pcd_tmp)
+        o3d.visualization.draw_geometries([self.pcd, pcd])
         pcd.transform(INIT_TF)
         move = np.array(
             self.pcd.get_oriented_bounding_box().get_center()
             - pcd.get_oriented_bounding_box().get_center()
         ).tolist()
+        print(move)
 
 
         reg_p2p = o3d.pipelines.registration.registration_icp(
@@ -27,18 +30,14 @@ class Commander:
             10,
             toMatrix(fromTf((move,toTf(fromMatrix(INIT_TF))[1]))),
             o3d.pipelines.registration.TransformationEstimationPointToPoint(),
-            o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=250),
+            o3d.pipelines.registration.ICPConvergenceCriteria(max_iteration=200),
         )
 
         return reg_p2p.transformation
 
-    def build(self,tf):
-        # self.listener=tf.TransformListener()
-        # self.listener.waitForTransform('world','mesh',rospy.Time(0),rospy.Duration(4))
-        # self.origin=toMsg(fromTf(self.listener.lookupTransform('world','mesh',rospy.Duration(0))))
-        mat=toMatrix(fromTf(tf))
-        self.bases=[np.inner(mat,np.append(np.array(point),np.array([0,1]))) for point in ((BLOCK_X/2,BLOCK_Y/2),(BLOCK_X/-2,BLOCK_Y/2),(BLOCK_X/-2,BLOCK_Y/-2),(BLOCK_X/2,BLOCK_Y/-2))]
-        # self.bases=[listener.transformPoint('mesh',PointStamped(Header(frame_id='world'),Point(x,y,0))).point for x,y in ((BLOCK_X/2,BLOCK_Y/2),(BLOCK_X/-2,BLOCK_Y/2),(BLOCK_X/-2,BLOCK_Y/-2),(BLOCK_X/2,BLOCK_Y/-2))]
+    def build(self,listener):
+        self.origin=toMsg(fromTf(listener.lookupTransform('mesh','world',rospy.Time(0))))
+        self.bases=[listener.transformPoint('world',PointStamped(Header(frame_id='mesh'),Point(x,y,0))).point for x,y in ((BLOCK_X/2,BLOCK_Y/2),(BLOCK_X/-2,BLOCK_Y/2),(BLOCK_X/-2,BLOCK_Y/-2),(BLOCK_X/2,BLOCK_Y/-2))]
         # self.map=
 
         # # pcd=o3d.geometry.PointCloud()

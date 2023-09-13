@@ -12,7 +12,7 @@ from tf_conversions import *
 import moveit_msgs
 import open3d as o3d
 import trajectory_msgs
-
+from spatialmath import UnitQuaternion as UQ
 from geometry_msgs.msg import Point
 
 # DICE_GRASP_POSE = moveit_commander.conversions.list_to_pose([0.4, -0.1, 0.4, pi, 0, -pi / 4])
@@ -27,13 +27,13 @@ DICE_ROLL_POSE = [
 ]
 ROLL_JOINT = "panda_joint7"
 DICE_WIDTH = 0.02
-JENGA_CAPTURE_POSE = moveit_commander.conversions.list_to_pose([0.15, -0.5, 0.4, pi / 2, pi / 2, pi / 2])
+JENGA_CAPTURE_POSE = moveit_commander.conversions.list_to_pose([0.17, -0.5, 0.4, pi / 2, pi / 2, pi / 2])
 DICE_CAPTURE_POSE = [0, 0, 0, 0, 0, 0]
 RESTRICTED_FLOORS = 3
 ESCAPE_JOINT = "panda_joint2"
 ESCAPE_VALUE = -3 * pi / 8
 
-WORLD_LINK = "panda_base"
+WORLD_LINK = "world"
 CAM_LINK = "rgb_camera_link"
 
 
@@ -88,74 +88,75 @@ def roll_dice():
 moveit_commander.roscpp_initialize("")
 rospy.init_node("jenga_main", anonymous=True, disable_signals=True)
 
-# robot = moveit_commander.RobotCommander()
-# print(f"============ Root Link:  {robot.get_root_link():^20} ============")
-# print(f"============ Move Groups:{str(robot.get_group_names()):^20} ============")
+robot = moveit_commander.RobotCommander()
+print(f"============ Root Link:  {robot.get_root_link():^20} ============")
+print(f"============ Move Groups:{str(robot.get_group_names()):^20} ============")
 
-# gripper = control_pkg.gripper.Commander()
-# print("gripper ready")
+gripper = control_pkg.gripper.Commander()
+print("gripper ready")
 scene = control_pkg.scene.Commander()
-# print("scene ready")
+print("scene ready")
 
-# links = robot.get_link_names()
-# grasp_link = links[list(map(lambda x: x.find("grasp") > -1, links)).index(True)]
-# push_link = links[list(map(lambda x: x.find("push") > -1, links)).index(True)]
-# manipulator = control_pkg.manipulator.Commander(grasp_link, push_link)
+links = robot.get_link_names()
+grasp_link = links[list(map(lambda x: x.find("grasp") > -1, links)).index(True)]
+push_link = links[list(map(lambda x: x.find("push") > -1, links)).index(True)]
+manipulator = control_pkg.manipulator.Commander(grasp_link, push_link)
 
-# print(manipulator.get_current_joint_values())
 # manipulator.ready()
 # manipulator.set_joint_value_target(ESCAPE_JOINT, ESCAPE_VALUE)
 # manipulator.plan_and_execute(None, None)
 # manipulator.plan_and_execute(JENGA_CAPTURE_POSE, "grasper")
 # rospy.sleep(3)
-# image = block_recog_pkg.image.Commander()
-# image.capture()
-# colors = block_recog_pkg.image.colors  # need deepcopy?
+image = block_recog_pkg.image.Commander()
+image.capture()
+colors = block_recog_pkg.image.colors  # need deepcopy?
 
-# total_points = 0
-# total_pcd = o3d.geometry.PointCloud()
-# for i, color in enumerate(colors):
-#     color["masks"] = image.get_masks(i)
-#     rospy.loginfo(f"Color: {color['name']}, recognized {len(color['masks']) - 1} blocks")
+total_points = 0
+total_pcd = o3d.geometry.PointCloud()
+for i, color in enumerate(colors):
+    color["masks"] = image.get_masks(i)
+    rospy.loginfo(f"Color: {color['name']}, recognized {len(color['masks']) - 1} blocks")
 
-#     color["pcd"] = image.get_pcd(color["masks"][-1])
-#     points = color["pcd"].points
-#     rospy.loginfo(f"Color: {color['name']}, PCD generated with {len(points)} points")
-#     total_points += len(points)
-#     total_pcd += color["pcd"]
+    color["pcd"] = image.get_pcd(color["masks"][-1])
+    points = color["pcd"].points
+    rospy.loginfo(f"Color: {color['name']}, PCD generated with {len(points)} points")
+    total_points += len(points)
+    total_pcd += color["pcd"]
 
 
-tower = block_recog_pkg.tower.Commander(block_recog_pkg.utils.TOWER_MODEL, 100)
-# rospy.loginfo("Start ICP ...")
-# mat1 = tower.get_transform(total_pcd)
+tower = block_recog_pkg.tower.Commander(block_recog_pkg.utils.TOWER_MODEL, len(total_pcd.points))
+rospy.loginfo("Start ICP...")
+mat1 = tower.get_transform(total_pcd)
+rospy.loginfo("ICP done")
+print(mat1)
+print(np.linalg.inv(mat1))
 
-# mat1=np.array([[-0.01043834,  0.71509364, -0.69895074 , 0.23364004], [-0.04300351 ,-0.69866316 ,-0.71415719 , 0.29406267], [-0.99902039,  0.02260272 , 0.03804442,  0.00815553], [ 0.  ,        0.      ,    0.        ,  1.        ]])
-# rospy.loginfo("ICP done")
+listener = tf.TransformListener()
+listener.waitForTransform(CAM_LINK, WORLD_LINK, rospy.Time(0), rospy.Duration(4))
+mat2 = toMatrix(fromTf(listener.lookupTransform(CAM_LINK, WORLD_LINK, rospy.Time(0))))
+print(mat2)
 
-# listener = tf.TransformListener()
-# listener.waitForTransform(WORLD_LINK, CAM_LINK, rospy.Time(0), rospy.Duration(4))
-# # mat2 = toMatrix(fromTf(listener.lookupTransform(WORLD_LINK, CAM_LINK, rospy.Time(0))))
-# mat2=toMatrix(fromTf(([0.10795684203167738, -0.4640064409483425, 0.32705477264160426], [-0.5180857898642066, -0.5196607355473399, -0.47468036970560373, -0.4860224809188127])))
+world2tower = toTf(fromMatrix(np.inner(np.linalg.inv(mat1),mat2)))
+broadcaster = tf.TransformBroadcaster()
 
-# world2tower = toTf(fromMatrix(np.inner(mat1, mat2)))
-# print(world2tower)
-# broadcaster = tf.TransformBroadcaster()
-# broadcaster.sendTransform(world2tower[0], world2tower[1], rospy.Time.now(), "mesh", WORLD_LINK)
-# print("broadcast done")
-# listener.waitForTransform("mesh", "world", rospy.Time(0), rospy.Duration(4))
-# print("confirm done")
-tftf=((0.23364004, 0.29406267, 0.00815553), (0.3229658422145709, -0.5715466226622598, 0.6769489904885987, -0.23331442974936117))
-tower.build(tftf)
-# print(tower.bases)
-# input()
-bases=[]
-for i in tower.bases:
-    bases.append(Point(i[0],i[1],i[2]))
 
-print(bases)
-scene.add_jenga(bases)
+rospy.loginfo('trying to broadcast')
 
-input("done")
+t0=rospy.Time.now()
+while not listener.canTransform('mesh','world',rospy.Time(0)):
+    rospy.sleep(.1)
+    if rospy.Time.now()-t0>rospy.Duration(5):
+        rospy.logwarn('broadcast failed')
+        break
+    broadcaster.sendTransform(world2tower[0], UQ(world2tower[1]).A, rospy.Time.now(), "mesh", WORLD_LINK)
+# print(listener.lookupTransform('mesh','world',rospy.Time(0)))
+rospy.sleep(.5)
+tower.build(listener)
+scene.add_jenga(tower.bases)
+print(tower.origin)
+print(tower.bases)
+input('done')
+
 
 
 dice = block_recog_pkg.image.Commander()
