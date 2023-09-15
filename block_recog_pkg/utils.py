@@ -31,6 +31,6 @@ intrinsic.intrinsic_matrix = [
     [0, 968.635, 775.975],
     [0, 0, 1],
 ]
-# INIT_TF = toMatrix(fromMsg(list_to_pose([0, 0, 0, 0, 0, pi / 2])))
+INIT_TF = toMatrix(fromMsg(list_to_pose([0, 0, -0.15, -pi/2, 0, pi/2])))
 
-INIT_TF = np.array([[0.7, -0.7, 0, 0], [0, 0, 1, 0], [-0.7, -0.7, 0, 0], [0, 0, 0, 1]])
+# INIT_TF = np.array([[0.7, -0.7, 0, 0], [0, 0, 1, 0], [-0.7, -0.7, 0, 0], [0, 0, 0, 1]])

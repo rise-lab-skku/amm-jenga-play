@@ -21,7 +21,7 @@ class Commander:
         pcd_tmp = dcp(pcd)
         pcd_tmp.transform(INIT_TF)
         mesh_frame_small = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=[0, 0, 0])
-        o3d.visualization.draw_geometries([self.pcd, pcd,mesh_frame_small])
+        o3d.visualization.draw_geometries([self.pcd, pcd_tmp,mesh_frame_small])
         move = np.array(self.pcd.get_oriented_bounding_box().get_center() - pcd_tmp.get_oriented_bounding_box().get_center())
         print(move)
 
