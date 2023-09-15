@@ -7,13 +7,14 @@ from copy import deepcopy as dcp
 import numpy as np
 
 import block_recog_pkg
-import tf
 from tf_conversions import *
 import moveit_msgs
 import open3d as o3d
 import trajectory_msgs
 from spatialmath import UnitQuaternion as UQ
 from geometry_msgs.msg import Point
+import tf2_ros
+
 
 # DICE_GRASP_POSE = moveit_commander.conversions.list_to_pose([0.4, -0.1, 0.4, pi, 0, -pi / 4])
 DICE_ROLL_POSE = [
@@ -39,6 +40,7 @@ CAM_LINK = "rgb_camera_link"
 
 from moveit_msgs.msg import RobotTrajectory as RT
 from trajectory_msgs.msg import JointTrajectoryPoint as JTP
+from std_msgs.msg import Header
 
 
 def roll_dice():
@@ -105,8 +107,8 @@ manipulator = control_pkg.manipulator.Commander(grasp_link, push_link)
 # manipulator.ready()
 # manipulator.set_joint_value_target(ESCAPE_JOINT, ESCAPE_VALUE)
 # manipulator.plan_and_execute(None, None)
-# manipulator.plan_and_execute(JENGA_CAPTURE_POSE, "grasper")
-# rospy.sleep(3)
+manipulator.plan_and_execute(JENGA_CAPTURE_POSE, "grasper")
+rospy.sleep(3)
 image = block_recog_pkg.image.Commander()
 image.capture()
 colors = block_recog_pkg.image.colors  # need deepcopy?
@@ -129,34 +131,51 @@ rospy.loginfo("Start ICP...")
 mat1 = tower.get_transform(total_pcd)
 rospy.loginfo("ICP done")
 print(mat1)
-print(np.linalg.inv(mat1))
-
-listener = tf.TransformListener()
-listener.waitForTransform(CAM_LINK, WORLD_LINK, rospy.Time(0), rospy.Duration(4))
-mat2 = toMatrix(fromTf(listener.lookupTransform(CAM_LINK, WORLD_LINK, rospy.Time(0))))
-print(mat2)
-
-world2tower = toTf(fromMatrix(np.inner(np.linalg.inv(mat1),mat2)))
-broadcaster = tf.TransformBroadcaster()
 
 
-rospy.loginfo('trying to broadcast')
-
-t0=rospy.Time.now()
-while not listener.canTransform('mesh','world',rospy.Time(0)):
-    rospy.sleep(.1)
-    if rospy.Time.now()-t0>rospy.Duration(5):
-        rospy.logwarn('broadcast failed')
+rate = rospy.Rate(10)
+listener = tf2_ros.Buffer()
+tf2_ros.TransformListener(listener)
+while not rospy.is_shutdown():
+    try:
+        tf = listener.lookup_transform(WORLD_LINK, CAM_LINK, rospy.Time()).transform
         break
-    broadcaster.sendTransform(world2tower[0], UQ(world2tower[1]).A, rospy.Time.now(), "mesh", WORLD_LINK)
-# print(listener.lookupTransform('mesh','world',rospy.Time(0)))
-rospy.sleep(.5)
+    except:
+        rate.sleep()
+        continue
+
+mat2 = toMatrix(fromMsg(Pose(tf.translation, tf.rotation)))
+print(mat2)
+trans=mat1[:3,3]+mat2[:3,3]
+rot=np.inner(mat2[:3,:3],mat1[:3,:3])
+mat=np.vstack((np.hstack((rot,trans.reshape(3,1))),(0,0,0,1)))
+print(mat)
+
+broadcaster = tf2_ros.StaticTransformBroadcaster()
+from geometry_msgs.msg import TransformStamped
+
+ts = TransformStamped(header=Header(frame_id=WORLD_LINK), child_frame_id="mesh")
+frame = fromMatrix(mat)
+
+msg = toMsg(fromTf((frame.p, UQ(frame.M.GetQuaternion()).A)))
+ts.transform.translation = msg.position
+ts.transform.rotation = msg.orientation
+
+rospy.loginfo("trying to broadcast")
+t0 = rospy.Time.now()
+while not listener.can_transform("mesh", "world", rospy.Time()):
+    rate.sleep()
+    if rospy.Time.now() - t0 > rospy.Duration(5):
+        rospy.logwarn("broadcast failed")
+        break
+    broadcaster.sendTransform(ts)
+
+print(listener.lookup_transform('mesh','world',rospy.Time()))
 tower.build(listener)
 scene.add_jenga(tower.bases)
 print(tower.origin)
 print(tower.bases)
-input('done')
-
+input("done")
 
 
 dice = block_recog_pkg.image.Commander()
