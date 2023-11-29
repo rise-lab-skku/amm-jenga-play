@@ -1,0 +1,13 @@
+planner_configs:
+  RRTConnect:
+    type: geometric::RRTConnect
+    range: 0.0  # Max motion added to tree. ==> maxDistance_ default: 0.0, if 0.0, set on setup()
+  
+arm:
+  planner_configs:
+    - RRTConnect
+  projection_evaluator: joints($(arg arm_id)_joint1,$(arg arm_id)_joint2)
+  longest_valid_segment_fraction: 0.005
+gripper:
+  planner_configs:
+    - RRTConnect

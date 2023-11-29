@@ -1,0 +1,17 @@
+<launch>
+  <arg name="arm_id" />
+  <arg name="robot_description" default="robot_description"/>
+
+  <param name="$(arg robot_description)" command="xacro '$(find custom_description)/robots/fr3.urdf.xacro' arm_id:=$(arg arm_id)" />
+  <param name="$(arg robot_description)_semantic" command="xacro '$(find custom_description)/robots/fr3.srdf.xacro' arm_id:=$(arg arm_id)" />
+
+  <group ns="$(arg robot_description)_planning">
+    <rosparam command="load" file="$(find fr3_moveit_config)/config/cartesian_limits.yaml" subst_value="true"/>
+  </group>
+
+  <!-- Load default settings for kinematics; these settings are overridden by settings in a node's namespace -->
+  <group ns="$(arg robot_description)_kinematics">
+    <rosparam command="load" file="$(find fr3_moveit_config)/config/kinematics.yaml" subst_value="true"/>
+  </group>
+
+</launch>

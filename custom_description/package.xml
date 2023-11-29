@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>custom_description</name>
+  <version>0.2.1</version>
+  <description>The custom_description package contains Robot Description Formats with xacro and meshes of customized FR3 robot in RISE lab.</description>
+  <maintainer email="mirinae3145@gmail.com">Taeha Shin</maintainer>
+  <license>MIT</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+  <exec_depend>xacro</exec_depend>
+</package>

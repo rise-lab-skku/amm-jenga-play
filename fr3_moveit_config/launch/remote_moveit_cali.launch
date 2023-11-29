@@ -1,0 +1,43 @@
+<?xml version="1.0"?>
+<launch>
+  <env name="ROSCONSOLE_FORMAT" value="[${time:%H:%M:%S}] ${severity} [${node}]: ${message}"/>
+
+  <arg name="load_gripper" default="true" />
+  <!-- <arg name="rviz_config" default="$(dirname)/moveit.rviz"/> -->
+  <arg name="rviz_config" default="$(dirname)/calibration_rviz.rviz"/>
+
+  <!-- By default use joint position controllers -->
+  <arg name="transmission" default="position" />
+
+  <!-- as well as MoveIt demo -->
+  <include file="$(dirname)/demo.launch" pass_all_args="true">
+    <!-- robot description is loaded by franka_control.launch -->
+    <arg name="load_robot_description" value="true" />
+    <!-- MoveItSimpleControllerManager provides ros_control's JointTrajectory controllers
+         as well as GripperCommand actions -->
+    <arg name="moveit_controller_manager" value="simple" />
+    <arg name="rviz_config" value="$(arg rviz_config)"/>
+  </include>
+
+  <!-- Kinect -->
+  <include file="$(find azure_kinect_ros_driver)/launch/kinect_rgbd.launch">
+    <arg name="overwrite_robot_description" value="false" />
+    <arg name="point_cloud"                 value="true" />
+    <arg name="rgb_point_cloud"             value="true" />
+  </include>
+
+  <!-- start ArUco -->
+  <!-- <arg name="marker_size" doc="Size of the ArUco marker used, in meters" /> -->
+  <!-- <arg name="marker_id" doc="The ID of the ArUco marker used" /> -->
+  <node name="aruco_tracker" pkg="aruco_ros" type="single">
+      <remap from="/camera_info"       to="/rgb/camera_info" />
+      <remap from="/image"             to="/rgb/image_rect_color" />
+      <param name="image_is_rectified" value="true"/>
+      <param name="marker_size"        value="0.18"/>
+      <param name="marker_id"          value="100"/>
+      <param name="reference_frame"    value=""/>
+      <param name="camera_frame"       value="rgb_camera_link"/>
+      <param name="marker_frame"       value="handeye_target"/>
+  </node>
+
+</launch>
